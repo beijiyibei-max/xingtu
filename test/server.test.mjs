@@ -6,7 +6,7 @@ import {once} from 'node:events';
 import {randomUUID} from 'node:crypto';
 import {join} from 'node:path';
 import {startServer,token,root} from './support.mjs';
-import {XTProject} from '../../星图V3.2/src/project.mjs';
+import {XTProject} from '../legacy/project/project.mjs';
 
 test('Java 服务：旧功能、访问控制、项目版本与证据隔离',async t=>{
  let server=await startServer();t.after(()=>server.stop());const call=(path,o={})=>server.call(path,o);let cookie;
