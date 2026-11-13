@@ -47,7 +47,7 @@ pipeline {
                     git rev-parse HEAD > dist/commit.txt
                     (cd dist && sha256sum xingtu-server.jar > SHA256SUMS)
                 '''
-                archiveArtifacts artifacts: 'dist/xingtu-server.jar,dist/SHA256SUMS,dist/commit.txt,dist/Dockerfile,dist/deployment/*,dist/数栈7.0部署向导.html', fingerprint: true
+                archiveArtifacts artifacts: 'dist/xingtu-server.jar,dist/SHA256SUMS,dist/commit.txt,dist/Dockerfile,dist/compose.yaml,dist/.dockerignore,dist/deployment/*,dist/数栈7.0部署向导.html', fingerprint: true
             }
         }
     }

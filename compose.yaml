@@ -1,0 +1,16 @@
+name: xingtu-test
+services:
+  xingtu:
+    image: xingtu-test:${XINGTU_IMAGE_TAG:-local}
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:22648:22648"
+    env_file:
+      - ${XINGTU_SERVICE_ENV:-./service.env}
+    volumes:
+      - xingtu-data:/data
+    restart: unless-stopped
+volumes:
+  xingtu-data:
+    name: xingtu-test-data

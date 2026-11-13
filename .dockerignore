@@ -1,0 +1,8 @@
+**
+!Dockerfile
+!xingtu-server.jar
+!deployment/
+!deployment/requirements-contract.txt
+!deployment/contract_v21.py
+!deployment/contract_worker.py
+!deployment/deployment-contract-v2.1.schema.json

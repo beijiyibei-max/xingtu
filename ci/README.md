@@ -98,26 +98,33 @@ cat /root/.ssh/jenkins-xingtu.pub
 
 ## 6. 练习发布、升级和回滚
 
-把 Jenkins 构建产物的 `dist` 目录内容上传到虚拟机的独立版本目录。保留 `Dockerfile` 和 `deployment` 子目录。以下命令在该版本目录运行。
+把 Jenkins 构建产物的 `dist` 目录内容上传到虚拟机的独立版本目录，包含 `compose.yaml`、`Dockerfile`、隐藏文件 `.dockerignore` 和 `deployment` 子目录。以下命令在该版本目录运行。Jenkins 的 Compose 文件位于 `/opt/xingtu-ci`，星图的 Compose 文件位于当前版本目录。
 
 ```bash
 sha256sum -c SHA256SUMS
-commit=$(cat commit.txt)
-docker build -t "xingtu-test:$commit" .
+export XINGTU_IMAGE_TAG=$(cat commit.txt)
+export XINGTU_SERVICE_ENV=/opt/xingtu-test/service.env
 mkdir -p /opt/xingtu-test
 chmod 700 /opt/xingtu-test
-if [ ! -f /opt/xingtu-test/service.env ]; then
-  (umask 077; printf 'XT_ACCESS_TOKEN=%s\n' "$(openssl rand -hex 24)" > /opt/xingtu-test/service.env)
+if [ ! -f "$XINGTU_SERVICE_ENV" ]; then
+  (umask 077; printf 'XT_ACCESS_TOKEN=%s\n' "$(openssl rand -hex 24)" > "$XINGTU_SERVICE_ENV")
 fi
-docker volume create xingtu-test-data
-docker run -d --name xingtu-test --restart unless-stopped \
-  -p 127.0.0.1:22648:22648 \
-  --env-file /opt/xingtu-test/service.env \
-  -v xingtu-test-data:/data "xingtu-test:$commit"
+docker compose config --quiet
+docker compose up -d --build
+docker compose ps
 curl -fsS --retry 12 --retry-delay 2 --retry-connrefused http://127.0.0.1:22648/healthz
-docker inspect --format '{{.Config.Image}}' xingtu-test
+docker inspect --format '{{.Config.Image}}' "$(docker compose ps -q xingtu)"
 ```
 
 看到 `ok=true`、版本正确且容器镜像标签与 `commit.txt` 一致后，可以通过 SSH 转发 22648，用浏览器做一次页面和操作单验收。首次运行时登录密钥在虚拟机的 `/opt/xingtu-test/service.env`。
 
-下次升级先构建新镜像，记录旧容器镜像名。先停旧容器并备份数据卷，再删除旧容器，按相同 `docker run` 参数启动新镜像，复查健康与提交号。失败时用同样参数切回记录的旧镜像。遇到改变数据格式的版本，回滚前按该版本的迁移说明恢复对应备份。练习通过后，可将这段发布过程接为只部署测试环境的 Jenkins 阶段。
+升级前记录旧镜像的提交号并备份 `xingtu-test-data`。进入新版本目录，再执行上面的部署命令。Compose 使用固定项目名和数据卷，以新镜像替换服务。回滚时保留旧镜像并指定旧提交号。
+
+```bash
+export XINGTU_SERVICE_ENV=/opt/xingtu-test/service.env
+export XINGTU_IMAGE_TAG=上一个成功部署的提交号
+docker compose up -d --no-build --pull never
+curl -fsS --retry 12 --retry-delay 2 --retry-connrefused http://127.0.0.1:22648/healthz
+```
+
+涉及数据格式迁移的版本，回滚前按对应说明恢复备份。 [Docker Compose 环境变量](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)

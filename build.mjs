@@ -49,7 +49,7 @@ const stagedJar=join(root,'build/xingtu-server.jar');
 const stageOnly=process.argv.includes('--stage-only');
 for(const [cmd,args] of [[javac,['--release','17','-encoding','UTF-8','-d',classes,...['Json','EvidenceSchema','HttpUtil','Auth','Vault','EvidenceStore','Legacy','K8sTopology','DeploymentAssistant','DeploymentContract','XingtuServer'].map(x=>join(root,'src',x+'.java'))]],[jar,['--create','--file',stagedJar,'--main-class','XingtuServer','-C',classes,'.','-C',join(root,'build'),'web','-C',join(root,'build'),'fixtures']]]){const result=spawnSync(cmd,args,{stdio:'inherit',windowsHide:true});if(result.status!==0)throw Error('Java 构建失败');}
 if(!stageOnly) await rename(stagedJar,join(root,'dist/xingtu-server.jar'));
-for(const name of ['deploy.sh','start.sh','启动星图.cmd','start.ps1','Dockerfile','nginx.conf.example','README.md','验证结果.md'])await copyFile(join(root,name),join(root,'dist',name));
+for(const name of ['deploy.sh','start.sh','启动星图.cmd','start.ps1','Dockerfile','compose.yaml','.dockerignore','nginx.conf.example','README.md','验证结果.md'])await copyFile(join(root,name),join(root,'dist',name));
 await writeFile(join(root,'dist/start.ps1'),'\uFEFF'+await read('start.ps1'));
 await mkdir(join(root,'dist/collector'),{recursive:true});
 for(const name of ['xt-blackbox','catalog.tsv'])await copyFile(join(root,'collector',name),join(root,'dist/collector',name));
