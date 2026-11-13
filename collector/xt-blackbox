@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# V3.1: read-only, one approved namespace, no logs, no credentials in output.
+set -u
+HERE=$(cd "$(dirname "$0")" && pwd)
+KC=${XT_KUBECTL:-kubectl}
+PROJECT=''; CLUSTER=''; NS=''; PUSH=''; MODE=${1:-help}; shift 2>/dev/null || true
+for argument in "$@"; do
+  case "$argument" in
+    --project=*) PROJECT=${argument#*=} ;;
+    --cluster=*) CLUSTER=${argument#*=} ;;
+    --namespace=*) NS=${argument#*=} ;;
+    --push=*) PUSH=${argument#*=} ;;
+    --json) : ;;
+    *) printf '不支持的参数：%s\n' "$argument" >&2; exit 2 ;;
+  esac
+done
+if [ "$MODE" != capabilities ]; then
+  printf '用法：bash xt-blackbox capabilities --project=项目代号 --cluster=集群代号 --namespace=dtstack --json [--push=http://团队服务/api/ingest]\n' >&2
+  printf '基线和变更比对在网页完成。访问密钥通过 XT_ACCESS_TOKEN 环境变量传入。\n' >&2
+  exit 2
+fi
+for value in "$PROJECT" "$CLUSTER" "$NS"; do
+  case "$value" in ''|*[!A-Za-z0-9._-]*) printf '项目、集群、Namespace 必须显式指定，使用英文代号、数字、点、下划线或短横线。\n' >&2; exit 2 ;; esac
+  [ "${#value}" -le 100 ] || exit 2
+done
+case "$NS" in *[!a-z0-9-]*|-*|*-) printf 'Namespace 格式无效\n' >&2; exit 2 ;; esac
+for tool in awk sed grep wc date; do command -v "$tool" >/dev/null || { printf '缺少 %s\n' "$tool" >&2; exit 2; }; done
+command -v "$KC" >/dev/null || { printf 'kubectl 不可用；请使用网页固定选项或联系现场人员提供批准的证据。\n' >&2; exit 2; }
+# JSON escape includes control characters; no user-supplied shell expansion.
+jqstr() {
+  printf '%s' "$1" | awk 'BEGIN{printf "\"";for(i=1;i<32;i++)ctrl[sprintf("%c",i)]=sprintf("\\u%04x",i)}
+    {if(NR>1)printf "\\n";for(i=1;i<=length($0);i++){c=substr($0,i,1);if(c=="\\")printf "\\\\";else if(c=="\"")printf "\\\"";else if(c in ctrl)printf "%s",ctrl[c];else printf "%s",c}}END{printf "\""}'
+}
+query() {
+  local result code
+  result=$("$KC" --request-timeout=8s -n "$NS" get "$@" 2>&1); code=$?
+  QUERY_RESULT=''; QUERY_STATUS=pass
+  if [ "$code" -ne 0 ]; then
+    case "$result" in *Forbidden*|*forbidden*|*Unauthorized*) QUERY_STATUS=forbidden ;; *) QUERY_STATUS=error ;; esac
+  else
+    QUERY_RESULT=$result
+  fi
+}
+query deployment,statefulset -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}{.kind}{"\t"}{.status.readyReplicas}{"/"}{.spec.replicas}{"\n"}{end}'
+WORKLOAD_STATUS=$QUERY_STATUS; WORKLOADS=$QUERY_RESULT
+query daemonset -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}DaemonSet{"\t"}{.status.numberReady}{"/"}{.status.desiredNumberScheduled}{"\n"}{end}'
+DS_STATUS=$QUERY_STATUS; WORKLOADS="$WORKLOADS"$'\n'"$QUERY_RESULT"
+query service -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}{range .spec.ports[*]}{.port}{","}{end}{"\n"}{end}'
+SERVICE_STATUS=$QUERY_STATUS; SERVICES=$QUERY_RESULT
+query endpoints -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}{range .subsets[*].addresses[*]}{.ip}{","}{end}{"\n"}{end}'
+ENDPOINT_STATUS=$QUERY_STATUS; ENDPOINTS=$QUERY_RESULT
+query configmap common-config -o 'go-template={{range $k,$v := .data}}{{$k}}{{"\001"}}{{$v}}{{"\002"}}{{end}}'
+CONFIG_STATUS=$QUERY_STATUS; RAW=$QUERY_RESULT; CONFIG=''
+# Conservative subset: two-space nested scalar YAML. Unsupported syntax stays unknown.
+if [ "$CONFIG_STATUS" = pass ]; then
+  rest=$RAW
+  while [ -n "$rest" ]; do
+    pair=${rest%%$'\002'*}; next=${rest#*$'\002'}
+    [ "$next" != "$rest" ] || { CONFIG_STATUS=unknown; break; }; rest=$next
+    key=${pair%%$'\001'*}; value=${pair#*$'\001'}
+    if [[ "$key" == *.yaml || "$key" == *.yml ]]; then
+      flattened=$(printf '%s\n' "$value" | awk '
+        /^[ ]*#/||/^[ ]*$/{next}
+        {match($0,/^ */);ind=RLENGTH;if(ind%2!=0){bad=1;next};line=substr($0,ind+1)
+         if(line ~ /^[\t-]/ || line ~ /[&*{}\[\]|>]/){bad=1;next}
+         pos=index(line,":");if(!pos){bad=1;next};k=substr(line,1,pos-1);v=substr(line,pos+1);sub(/^ +/,"",v);sub(/ +$/, "",v)
+         if(k!~/^[A-Za-z0-9_.-]+$/){bad=1;next};depth=ind/2+1;stack[depth]=k
+         if(v!=""){p="";for(d=1;d<=depth;d++){if(stack[d]=="")bad=1;p=p (d>1?".":"") stack[d]}
+           if(v ~ /^".*"$/ || v ~ /^\047.*\047$/)v=substr(v,2,length(v)-2)
+           if(v ~ / #/)bad=1
+           print p "\t" v}
+         for(d=depth+1;d<=20;d++)delete stack[d]}
+        END{if(bad)exit 3}')
+      if [ "$?" -ne 0 ]; then CONFIG_STATUS=unknown; else CONFIG+="$flattened"$'\n'; fi
+    else CONFIG+="$key"$'\t'"$value"$'\n'; fi
+  done
+fi
+unset RAW QUERY_RESULT rest pair value flattened
+cfg() { printf '%s\n' "$CONFIG" | awk -F'\t' -v k="$1" '$1==k{n++;v=$2}END{if(n==1)printf "%s",v;else exit 1}'; }
+wirecheck() {
+  local rule=$1 key want current
+  case "$rule" in
+    *'>='*) key=${rule%%'>='*}; want=${rule#*'>='};current=$(cfg "$key")||return 2; [[ "$current" =~ ^[0-9]+$ ]]||return 2; [ "$current" -ge "$want" ] ;;
+    *'+') key=${rule%+};current=$(cfg "$key")||return 2;[ -n "$current" ] ;;
+    *'='*) key=${rule%%=*};want=${rule#*=};current=$(cfg "$key")||return 2;[ "$current" = "$want" ] ;;
+    *) return 2 ;;
+  esac
+}
+contract_service() {
+  local ref=$1 port=${2:-} host target suffix
+  if [ "$SERVICE_STATUS" != pass ]; then C_STATUS=$SERVICE_STATUS;return;fi
+  if [ "$ENDPOINT_STATUS" != pass ]; then C_STATUS=$ENDPOINT_STATUS;return;fi
+  host=${ref#http://};host=${host#https://};host=${host%%/*};target=${host%%:*}
+  [ -n "$port" ] || { if [[ "$host" == *:* ]]; then port=${host##*:}; fi; }
+  case "$target" in
+    *.*) suffix=".$NS.svc.cluster.local";if [[ "$target" == *"$suffix" ]];then target=${target%"$suffix"};elif [[ "$target" == *".$NS" ]];then target=${target%".$NS"};else C_STATUS=unknown;return;fi ;;
+  esac
+  if ! printf '%s\n' "$SERVICES" | awk -F'\t' -v name="$target" -v port="$port" '$1==name{found=1;if(port==""||index(","$2,","port",")>0)ok=1}END{exit !(found&&ok)}';then C_STATUS=fail;return;fi
+  if ! printf '%s\n' "$ENDPOINTS" | awk -F'\t' -v name="$target" '$1==name&&$2!=""{ok=1}END{exit !ok}';then C_STATUS=fail;return;fi
+  C_STATUS=pass
+}
+OUTPUT=''; FIRST=1
+while IFS=$'\t' read -r id title deps wires; do
+  [ -n "$id" ] || continue
+  OBJECT=unknown; CONF=unknown; REASON='未配置专项验证，保留证据缺口'
+  if [ "$WORKLOAD_STATUS" != pass ]; then OBJECT=$WORKLOAD_STATUS
+  elif [ "$DS_STATUS" != pass ]; then OBJECT=$DS_STATUS
+  elif [ "$deps" != '-' ];then
+    OBJECT=pass
+    oldIFS=$IFS;IFS=',';read -r -a requirements <<< "$deps";IFS=$oldIFS
+    for dep in "${requirements[@]}";do
+      kind=${dep%%/*}; tail=${dep#*/}; pattern=${tail%/*}; need=${tail##*/}
+      result=$(printf '%s\n' "$WORKLOADS" | awk -F'\t' -v p="$pattern" -v k="$kind" -v need="$need" '
+        BEGIN{prefix=(substr(p,length(p),1)=="*");if(prefix)p=substr(p,1,length(p)-1)}
+        (k=="*"||$2==k)&&((prefix&&index($1,p)==1)||(!prefix&&$1==p)){found=1;split($3,a,"/");if(a[1]+0>=need)ok=1}
+        END{if(ok)print "pass";else if(found)print "fail";else print "absent"}')
+      if [ "$result" = absent ];then OBJECT=absent;break;elif [ "$result" = fail ];then OBJECT=fail;fi
+    done
+  fi
+  if [ "$wires" != '-' ];then
+    if [ "$CONFIG_STATUS" != pass ];then CONF=$CONFIG_STATUS
+    else
+      CONF=pass
+      oldIFS=$IFS;IFS=',';read -r -a conditions <<< "$wires";IFS=$oldIFS
+      for wire in "${conditions[@]}";do wirecheck "$wire";code=$?;if [ "$code" = 2 ];then CONF=unknown;break;elif [ "$code" != 0 ];then CONF=fail;fi;done
+    fi
+  fi
+  if [ "$CONF" = pass ];then
+    case "$id" in
+      redis-single) ref=$(cfg global.redis.host)||ref='';port=$(cfg global.redis.port)||port='';if [ -n "$ref" ]&&[ -n "$port" ];then contract_service "$ref" "$port";CONF=$C_STATUS;else CONF=unknown;fi ;;
+      redis-ha) ref=$(cfg global.redis.sentinelHost)||ref='';if [ -n "$ref" ];then contract_service "$ref" '';CONF=$C_STATUS;else CONF=unknown;fi ;;
+      s3-backend) ref=$(cfg global.s3.endpoint)||ref='';type=$(cfg global.s3.type)||type='';if [ "$type" = minio ]&&[ -n "$ref" ];then contract_service "$ref" '';CONF=$C_STATUS;else CONF=unknown;fi ;;
+      *) CONF=unknown ;; # A switch is not a complete consumer-to-provider contract.
+    esac
+  fi
+  case "$OBJECT/$CONF" in
+    *forbidden*) REASON='批准范围内有查询被禁止；不推断未部署' ;;
+    *error*) REASON='查询失败；未将空结果当作未部署' ;;
+    *fail*) REASON='本 Namespace 的对象副本或支持的配置契约不匹配，需进一步核对' ;;
+    absent/*) REASON='本 Namespace 查询成功，但没有匹配的工作负载' ;;
+    pass/pass) REASON='本 Namespace 对象就绪，支持的配置与 Service/Endpoints 匹配；业务仍需复测' ;;
+    *) REASON='仅保留已取得的对象证据；同步、主从和业务结果仍待核验' ;;
+  esac
+  [ "$FIRST" = 1 ] || OUTPUT+=',';FIRST=0
+  OUTPUT+="{\"id\":$(jqstr "$id"),\"evidence\":{\"object\":$(jqstr "$OBJECT"),\"configuration\":$(jqstr "$CONF"),\"function\":\"pending\"},\"reasons\":[$(jqstr "$REASON")]}"
+done < "$HERE/catalog.tsv"
+unset CONFIG WORKLOADS SERVICES ENDPOINTS
+BODY="{\"schemaVersion\":2,\"projectId\":$(jqstr "$PROJECT"),\"clusterId\":$(jqstr "$CLUSTER"),\"namespace\":$(jqstr "$NS"),\"generatedAt\":$(jqstr "$(date -u +%Y-%m-%dT%H:%M:%SZ)"),\"capabilities\":[$OUTPUT]}"
+[ "$(printf '%s' "$BODY" | wc -c)" -lt 20480 ] || { printf '证据超出 20KB，拒绝输出，未静默截断。\n' >&2;exit 2; }
+printf '%s\n' "$BODY"
+if [ -n "$PUSH" ];then
+  [ -n "${XT_ACCESS_TOKEN:-}" ]||{ printf '推送需要 XT_ACCESS_TOKEN\n' >&2;exit 2; }
+  command -v curl >/dev/null||exit 2
+  printf '%s' "$BODY" | curl --fail --silent --show-error --max-time 15 -H "Authorization: Bearer $XT_ACCESS_TOKEN" -H 'Content-Type: application/json' --data-binary @- "$PUSH" >&2 || exit 2
+fi

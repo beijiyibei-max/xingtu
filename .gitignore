@@ -1,0 +1,17 @@
+node_modules/
+build/
+dist/
+runlogs/
+data/
+test/runtime/
+test/win-*/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+service.env
+*.pem
+*.key
+*.jar
+*.log

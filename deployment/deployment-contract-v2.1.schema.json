@@ -1,0 +1,1053 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xingtu:deployment:contract:2.1",
+  "title": "星图 7.0 部署执行数据契约 V2.1",
+  "description": "校验记录形状。引用完整性、命令渲染、审批真伪、依赖和证据判定规则见 V2.1 数据契约。",
+  "oneOf": [{"$ref":"#/$defs/order"},{"$ref":"#/$defs/materialManifest"},{"$ref":"#/$defs/evidencePack"}],
+  "$defs": {
+    "id": {"type":"string","pattern":"^[a-z0-9][a-z0-9._-]{0,79}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file","section","verifiedAt","confidence"],
+      "properties": {
+        "file": {"type":"string","minLength":1,"maxLength":260},
+        "section": {"type":"string","minLength":1,"maxLength":160},
+        "verifiedAt": {"type":"string","format":"date-time"},
+        "confidence": {"enum":["verified","observed","unverified"]},
+        "reproductions": {"type":"integer","minimum":0,"maximum":100000},
+        "reviewAfter": {"type":"string","format":"date-time"}
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","alias","host","roles","architecture","materialRoot"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "alias": {"type":"string","minLength":1,"maxLength":80},
+        "host": {"type":"string","minLength":1,"maxLength":253},
+        "roles": {
+          "type": "array",
+          "items": {"enum":["deploy","control-plane","worker","storage","compute","gpu"]},
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true
+        },
+        "architecture": {"enum":["amd64","arm64"]},
+        "materialRoot": {"type":"string","pattern":"^/data(?:/[a-zA-Z0-9._-]+)*$"}
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","host","port","tls"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "host": {"type":"string","minLength":1,"maxLength":253},
+        "port": {"type":"integer","minimum":1,"maximum":65535},
+        "tls": {"type":"boolean"},
+        "path": {"type":"string","minLength":1,"maxLength":180}
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","selected"],
+      "properties": {"id":{"$ref":"#/$defs/id"},"selected":{"anyOf":[{"type":"boolean"},{"type":"null"}]}}
+    },
+    "reuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource","mode","requiredCheckIds"],
+      "properties": {
+        "resource": {"enum":["k8s","em","mysql","s3","nacos","kafka","redis","elasticsearch"]},
+        "mode": {"enum":["new","reuse","na"]},
+        "targetId": {"$ref":"#/$defs/id"},
+        "requiredCheckIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "reason": {"type":"string","minLength":1,"maxLength":200}
+      }
+    },
+    "networkCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","sourceId","targetEndpointId","protocol","purpose","timeoutSeconds","required","checkIds"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "sourceId": {"$ref":"#/$defs/id"},
+        "targetEndpointId": {"$ref":"#/$defs/id"},
+        "protocol": {"enum":["tcp","https","http","s3","mysql","kafka","nacos","redis","elasticsearch"]},
+        "purpose": {"type":"string","minLength":1,"maxLength":160},
+        "timeoutSeconds": {"type":"integer","minimum":1,"maximum":120},
+        "required": {"type":"boolean"},
+        "checkIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":1,"maxItems":512,"uniqueItems":true}
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "customerAlias",
+        "siteAlias",
+        "environment",
+        "mode",
+        "route",
+        "manifestId",
+        "nodes",
+        "endpoints",
+        "networkChecks",
+        "cluster",
+        "storage",
+        "moduleIds",
+        "conditions",
+        "reuse",
+        "changeWindow",
+        "policy",
+        "workstations"
+      ],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "customerAlias": {"type":"string","minLength":1,"maxLength":80},
+        "siteAlias": {"type":"string","minLength":1,"maxLength":80},
+        "environment": {"enum":["fixture","test","production"]},
+        "mode": {"enum":["offline","restricted","team"]},
+        "route": {"enum":["new-sealos-em","reuse-k8s","reuse-em"]},
+        "manifestId": {"$ref":"#/$defs/id"},
+        "nodes": {"type":"array","items":{"$ref":"#/$defs/node"},"minItems":1,"maxItems":2048},
+        "endpoints": {"type":"array","items":{"$ref":"#/$defs/endpoint"},"minItems":1,"maxItems":128},
+        "networkChecks": {"type":"array","items":{"$ref":"#/$defs/networkCheck"},"minItems":1,"maxItems":256},
+        "cluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["context","identityRef","productNamespace","emNamespace"],
+          "properties": {
+            "context": {"type":"string","minLength":1,"maxLength":253},
+            "identityRef": {"anyOf":[{"$ref":"#/$defs/id"},{"type":"null"}]},
+            "productNamespace": {"$ref":"#/$defs/id"},
+            "emNamespace": {"$ref":"#/$defs/id"}
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type","locationRef"],
+          "properties": {
+            "type": {"enum":["s3","nfs","local"]},
+            "endpointId": {"$ref":"#/$defs/id"},
+            "locationRef": {"$ref":"#/$defs/id"},
+            "storageClass": {"$ref":"#/$defs/id"}
+          }
+        },
+        "moduleIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":1,"maxItems":512,"uniqueItems":true},
+        "conditions": {"type":"array","items":{"$ref":"#/$defs/condition"},"minItems":0,"maxItems":128},
+        "reuse": {"type":"array","items":{"$ref":"#/$defs/reuse"},"minItems":1,"maxItems":16},
+        "changeWindow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["startsAt","endsAt","approvalRef"],
+          "properties": {
+            "startsAt": {"type":"string","format":"date-time"},
+            "endsAt": {"type":"string","format":"date-time"},
+            "approvalRef": {"$ref":"#/$defs/id"}
+          }
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["allowResultImport","allowHermes","exportAllowed"],
+          "properties": {
+            "allowResultImport": {"type":"boolean"},
+            "allowHermes": {"type":"boolean"},
+            "providerId": {"$ref":"#/$defs/id"},
+            "dataRegion": {"type":"string","minLength":1,"maxLength":80},
+            "customerConsentRef": {"$ref":"#/$defs/id"},
+            "consentUntil": {"type":"string","format":"date-time"},
+            "retentionDays": {"type":"integer","minimum":1,"maximum":3650},
+            "backupRef": {"$ref":"#/$defs/id"},
+            "restoreDrillRef": {"$ref":"#/$defs/id"},
+            "exportAllowed": {"type":"boolean"},
+            "backupEncrypted": {"type":"boolean"}
+          }
+        },
+        "workstations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id","alias","purpose"],
+            "properties": {
+              "id": {"$ref":"#/$defs/id"},
+              "alias": {"type":"string","minLength":1,"maxLength":80},
+              "purpose": {"enum":["operator","customer-browser","em-browser"]}
+            }
+          },
+          "minItems": 1,
+          "maxItems": 32
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"mode":{"const":"restricted"}}},
+          "then": {
+            "properties": {
+              "policy": {
+                "properties": {
+                  "allowResultImport": {"const":false},
+                  "allowHermes": {"const":false},
+                  "exportAllowed": {"const":false}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties":{"policy":{"properties":{"allowHermes":{"const":true}}}}},
+          "then": {"properties":{"policy":{"required":["providerId","dataRegion","customerConsentRef","consentUntil"]}}}
+        },
+        {
+          "if": {"properties":{"mode":{"const":"team"}}},
+          "then": {
+            "properties": {
+              "policy": {
+                "required": ["retentionDays","backupRef","restoreDrillRef","backupEncrypted"],
+                "properties": {"backupEncrypted":{"const":true}}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "chart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","name","version","memberPath","chartSha256"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "name": {"type":"string","pattern":"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"},
+        "version": {"type":"string","minLength":1,"maxLength":80},
+        "memberPath": {"type":"string","minLength":1,"maxLength":240},
+        "chartSha256": {"type":"string","pattern":"^[a-f0-9]{64}$"}
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","archiveMemberPath","archiveFormat","sourceRef","registryRef","tag","digest","platforms"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "archiveMemberPath": {"type":"string","minLength":1,"maxLength":240},
+        "archiveFormat": {"enum":["oci-archive","docker-archive"]},
+        "sourceRef": {"type":"string","minLength":1,"maxLength":255},
+        "registryRef": {"type":"string","minLength":3,"maxLength":255,"pattern":"^[a-z0-9][a-z0-9.\\-:/_]+$"},
+        "tag": {"type":"string","minLength":1,"maxLength":128},
+        "digest": {"anyOf":[{"type":"string","pattern":"^sha256:[a-f0-9]{64}$"},{"type":"null"}]},
+        "platforms": {
+          "type": "array",
+          "items": {"enum":["linux/amd64","linux/arm64"]},
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","name","format","sha256","sizeBytes","charts","images","source"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "name": {"type":"string","minLength":1,"maxLength":240},
+        "format": {"enum":["tar","tar-gzip","zip","oci-archive","docker-archive"]},
+        "sha256": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "sizeBytes": {"type":"integer","minimum":1,"maximum":9007199254740991},
+        "charts": {"type":"array","items":{"$ref":"#/$defs/chart"},"minItems":0,"maxItems":256},
+        "images": {"type":"array","items":{"$ref":"#/$defs/image"},"minItems":0,"maxItems":512},
+        "source": {"$ref":"#/$defs/source"}
+      }
+    },
+    "versionLock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","kubernetes","sealos","easyManager","product","packageIds","chartIds","imageIds","status","source"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "kubernetes": {"type":"string","minLength":1,"maxLength":80},
+        "sealos": {"type":"string","minLength":1,"maxLength":80},
+        "easyManager": {"type":"string","minLength":1,"maxLength":80},
+        "product": {"type":"string","minLength":1,"maxLength":80},
+        "packageIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":1,"maxItems":512,"uniqueItems":true},
+        "chartIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "imageIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "status": {"enum":["unverified","verified","fixture"]},
+        "source": {"$ref":"#/$defs/source"},
+        "verifiedAt": {"type":"string","format":"date-time"},
+        "verifiedBy": {"$ref":"#/$defs/id"},
+        "compatibility": {"type":"array","items":{"$ref":"#/$defs/compatibility"},"minItems":1,"maxItems":32,"uniqueItems":true},
+        "verificationRefs": {"type":"array","items":{"$ref":"#/$defs/source"},"minItems":1,"maxItems":64,"uniqueItems":true}
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"status":{"const":"verified"}}},
+          "then": {
+            "properties": {
+              "source": {"properties":{"confidence":{"const":"verified"}}},
+              "verificationRefs": {"contains":{"properties":{"confidence":{"const":"verified"}},"required":["confidence"]}}
+            },
+            "required": ["verifiedAt","verifiedBy","compatibility","verificationRefs"]
+          }
+        }
+      ]
+    },
+    "materialManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion","kind","id","packageList","versionLock","registry"],
+      "properties": {
+        "schemaVersion": {"const":"2.1"},
+        "kind": {"const":"xingtu-material-manifest"},
+        "id": {"$ref":"#/$defs/id"},
+        "packageList": {"type":"array","items":{"$ref":"#/$defs/package"},"minItems":1,"maxItems":1024},
+        "versionLock": {"$ref":"#/$defs/versionLock"},
+        "registry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["endpointId","tlsTrustRef","pullSecretRefs"],
+          "properties": {
+            "endpointId": {"$ref":"#/$defs/id"},
+            "tlsTrustRef": {"$ref":"#/$defs/id"},
+            "pushCredentialRef": {"$ref":"#/$defs/id"},
+            "pullSecretRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["namespace","ref"],
+                "properties": {"namespace":{"$ref":"#/$defs/id"},"ref":{"$ref":"#/$defs/id"}}
+              },
+              "minItems": 0,
+              "maxItems": 128
+            }
+          }
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","name","providedBy","scope","dependsOn","precedes","deployOrder","imageIds","verifyCheckIds","source"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "name": {"type":"string","minLength":1,"maxLength":120},
+        "providedBy": {"enum":["chart","sealos-bundled","image-only","reuse"]},
+        "scope": {"enum":["required","conditional","na","deferred"]},
+        "conditionId": {"$ref":"#/$defs/id"},
+        "dependsOn": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "precedes": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "deployOrder": {"type":"integer","minimum":0,"maximum":9999},
+        "chartId": {"$ref":"#/$defs/id"},
+        "imageIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "verifyCheckIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "source": {"$ref":"#/$defs/source"}
+      },
+      "allOf": [
+        {"if":{"properties":{"scope":{"const":"conditional"}}},"then":{"required":["conditionId"]}},
+        {"if":{"properties":{"providedBy":{"const":"chart"}}},"then":{"required":["chartId"]}},
+        {
+          "if": {"properties":{"providedBy":{"const":"image-only"}}},
+          "then": {"properties":{"imageIds":{"minItems":1}}}
+        }
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role","ref"],
+      "properties": {
+        "role": {"enum":["deploy","control-plane","node","em-browser","client-pc"]},
+        "ref": {"$ref":"#/$defs/id"},
+        "cwd": {"type":"string","minLength":1,"maxLength":256},
+        "namespace": {"$ref":"#/$defs/id"},
+        "resourceRef": {"$ref":"#/$defs/id"},
+        "shell": {"enum":["bash","sh","powershell","cmd"]}
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key","type","value","origin","originRef","status"],
+      "properties": {
+        "key": {"$ref":"#/$defs/id"},
+        "type": {"enum":["id","namespace","hostname","ipv4","ipv6","port","path","image","version"]},
+        "value": {"oneOf":[{"type":"string","minLength":1,"maxLength":512},{"type":"integer","minimum":1,"maximum":65535}]},
+        "origin": {"enum":["project","manifest","confirmed-evidence","approved-default"]},
+        "originRef": {"type":"string","minLength":1,"maxLength":240},
+        "status": {"enum":["suggested","confirmed","conflict"]},
+        "alternatives": {
+          "type": "array",
+          "items": {"$ref":"#/$defs/bindingAlternative"},
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true
+        }
+      },
+      "allOf": [{"if":{"properties":{"status":{"const":"conflict"}}},"then":{"required":["alternatives"]}}]
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "target",
+        "requiresCheckIds",
+        "expected",
+        "timeoutSeconds",
+        "idempotency",
+        "risk",
+        "source",
+        "retry",
+        "templateRef",
+        "templateHash",
+        "credentialMode"
+      ],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "kind": {"enum":["terminal","em-ui","browser","manual"]},
+        "target": {"$ref":"#/$defs/target"},
+        "argv": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"type":"string","minLength":1,"maxLength":240},
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["param"],
+                "properties": {"param":{"$ref":"#/$defs/id"}}
+              }
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 64
+        },
+        "instructionRef": {"$ref":"#/$defs/id"},
+        "requiresCheckIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "expected": {"type":"string","minLength":1,"maxLength":300},
+        "timeoutSeconds": {"type":"integer","minimum":1,"maximum":86400},
+        "idempotency": {"enum":["read-only","verify-before-retry","manual-recovery"]},
+        "risk": {"enum":["normal","destructive","data-loss"]},
+        "rollbackId": {"$ref":"#/$defs/id"},
+        "source": {"$ref":"#/$defs/source"},
+        "retry": {"$ref":"#/$defs/retry"},
+        "templateRef": {"$ref":"#/$defs/id"},
+        "templateHash": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "credentialMode": {"enum":["none","prompt","secretRef"]},
+        "credentialRef": {"$ref":"#/$defs/id"}
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"kind":{"const":"terminal"}}},
+          "then": {
+            "required": ["argv"],
+            "not": {"required":["instructionRef"]},
+            "properties": {"target":{"required":["shell"]}}
+          },
+          "else": {"required":["instructionRef"],"not":{"required":["argv"]}}
+        },
+        {"if":{"properties":{"risk":{"enum":["destructive","data-loss"]}}},"then":{"required":["rollbackId"]}},
+        {
+          "if": {"properties":{"credentialMode":{"const":"secretRef"}}},
+          "then": {"required":["credentialRef"]},
+          "else": {"not":{"required":["credentialRef"]}}
+        },
+        {
+          "if": {"properties":{"idempotency":{"const":"manual-recovery"}}},
+          "then": {"properties":{"retry":{"properties":{"maxAttempts":{"const":1}}}}}
+        }
+      ]
+    },
+    "factValue": {
+      "oneOf": [
+        {"type":"string","minLength":0,"maxLength":240},
+        {"type":"boolean"},
+        {"type":"integer","minimum":-1000000,"maximum":1000000000},
+        {
+          "type": "array",
+          "items": {"type":"string","minLength":1,"maxLength":240},
+          "minItems": 0,
+          "maxItems": 128,
+          "uniqueItems": true
+        }
+      ]
+    },
+    "expectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact","operator","value"],
+      "properties": {
+        "fact": {"$ref":"#/$defs/id"},
+        "operator": {"enum":["eq","gte","lte","contains-all","set-equal"]},
+        "value": {"$ref":"#/$defs/factValue"},
+        "unit": {"$ref":"#/$defs/unit"}
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"value":{"type":"integer"}}},
+          "then": {"required":["unit"]},
+          "else": {"not":{"required":["unit"]}}
+        },
+        {
+          "if": {"properties":{"operator":{"enum":["gte","lte"]}}},
+          "then": {"properties":{"value":{"type":"integer"}}}
+        },
+        {
+          "if": {"properties":{"operator":{"enum":["contains-all","set-equal"]}}},
+          "then": {"properties":{"value":{"type":"array"}}}
+        }
+      ]
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","layer","required","target","kind","expectations","evidenceTypes","ttlSeconds","source"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "layer": {"enum":["declared","object","runtime","business"]},
+        "required": {"type":"boolean"},
+        "target": {"$ref":"#/$defs/target"},
+        "commandId": {"$ref":"#/$defs/id"},
+        "kind": {"enum":["probe","fixed-option","screenshot-review"]},
+        "evaluatorRef": {"$ref":"#/$defs/id"},
+        "optionSetRef": {"$ref":"#/$defs/id"},
+        "expectations": {"type":"array","items":{"$ref":"#/$defs/expectation"},"minItems":1,"maxItems":24},
+        "evidenceTypes": {
+          "type": "array",
+          "items": {"enum":["structured","fixed-option","screenshot-ref"]},
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "ttlSeconds": {"type":"integer","minimum":1,"maximum":604800},
+        "source": {"$ref":"#/$defs/source"}
+      },
+      "allOf": [
+        {"if":{"properties":{"kind":{"const":"probe"}}},"then":{"required":["commandId","evaluatorRef"]}},
+        {"if":{"properties":{"kind":{"const":"fixed-option"}}},"then":{"required":["optionSetRef"]}}
+      ]
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetFingerprint",
+        "inputHash",
+        "approvalRef",
+        "reviewerId",
+        "backupRefs",
+        "rollbackPointRef",
+        "rollbackId",
+        "approvedAt",
+        "expiresAt",
+        "backupDecision"
+      ],
+      "properties": {
+        "targetFingerprint": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "inputHash": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "approvalRef": {"$ref":"#/$defs/id"},
+        "reviewerId": {"$ref":"#/$defs/id"},
+        "backupRefs": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "rollbackPointRef": {"$ref":"#/$defs/id"},
+        "rollbackId": {"$ref":"#/$defs/id"},
+        "approvedAt": {"type":"string","format":"date-time"},
+        "expiresAt": {"type":"string","format":"date-time"},
+        "backupDecision": {"enum":["required","not-applicable"]},
+        "backupNotApplicableReason": {"type":"string","maxLength":300,"minLength":1}
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"backupDecision":{"const":"required"}}},
+          "then": {"properties":{"backupRefs":{"minItems":1}},"not":{"required":["backupNotApplicableReason"]}},
+          "else": {"required":["backupNotApplicableReason"],"properties":{"backupRefs":{"maxItems":0}}}
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instanceId",
+        "stepId",
+        "stepVersion",
+        "projectId",
+        "planRevision",
+        "status",
+        "dependsOnInstanceIds",
+        "params",
+        "commands",
+        "checks",
+        "evidenceIds",
+        "operatorId",
+        "risk",
+        "targetFingerprint",
+        "inputHash",
+        "updatedAt"
+      ],
+      "properties": {
+        "instanceId": {"$ref":"#/$defs/id"},
+        "stepId": {"$ref":"#/$defs/id"},
+        "stepVersion": {"type":"string","minLength":1,"maxLength":40},
+        "componentId": {"$ref":"#/$defs/id"},
+        "projectId": {"$ref":"#/$defs/id"},
+        "planRevision": {"type":"integer","minimum":1,"maximum":9007199254740991},
+        "status": {
+          "enum": [
+            "pending",
+            "blocked",
+            "ready",
+            "running",
+            "verifying",
+            "passed",
+            "stale",
+            "failed",
+            "skipped",
+            "rollback-pending",
+            "rolled-back"
+          ]
+        },
+        "dependsOnInstanceIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "params": {"type":"array","items":{"$ref":"#/$defs/binding"},"minItems":0,"maxItems":64},
+        "commands": {"type":"array","items":{"$ref":"#/$defs/command"},"minItems":0,"maxItems":32},
+        "checks": {"type":"array","items":{"$ref":"#/$defs/check"},"minItems":0,"maxItems":128},
+        "evidenceIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "operatorId": {"anyOf":[{"$ref":"#/$defs/id"},{"type":"null"}]},
+        "risk": {"enum":["normal","destructive","data-loss"]},
+        "gate": {"$ref":"#/$defs/gate"},
+        "targetFingerprint": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "inputHash": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "updatedAt": {"type":"string","format":"date-time"},
+        "reasonCode": {"$ref":"#/$defs/id"}
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"status":{"const":"passed"}}},
+          "then": {
+            "properties": {
+              "evidenceIds": {"minItems":1},
+              "operatorId": {"$ref":"#/$defs/id"},
+              "checks": {"contains":{"properties":{"required":{"const":true}}}}
+            }
+          }
+        },
+        {
+          "if": {"properties":{"status":{"enum":["blocked","skipped","stale","failed"]}}},
+          "then": {"required":["reasonCode"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {"enum":["ready","running","verifying","passed"]},
+              "risk": {"enum":["destructive","data-loss"]}
+            }
+          },
+          "then": {"required":["gate"]}
+        }
+      ]
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","stage","preconditions","actions","dataLoss","approvalRole","recheckIds","source"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "stage": {"$ref":"#/$defs/id"},
+        "preconditions": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":1,"maxItems":512,"uniqueItems":true},
+        "actions": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":1,"maxItems":32},
+        "dataLoss": {"type":"string","minLength":1,"maxLength":300},
+        "approvalRole": {"enum":["reviewer","customer-approver"]},
+        "recheckIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":1,"maxItems":512,"uniqueItems":true},
+        "source": {"$ref":"#/$defs/source"}
+      }
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name","value"],
+      "properties": {"name":{"$ref":"#/$defs/id"},"value":{"$ref":"#/$defs/factValue"},"unit":{"$ref":"#/$defs/unit"}},
+      "allOf": [
+        {
+          "if": {"properties":{"value":{"type":"integer"}}},
+          "then": {"required":["unit"]},
+          "else": {"not":{"required":["unit"]}}
+        }
+      ]
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "instanceId",
+        "stepId",
+        "stepVersion",
+        "checkId",
+        "targetAlias",
+        "targetFingerprint",
+        "inputHash",
+        "observedAt",
+        "operatorId",
+        "evidenceType",
+        "facts",
+        "result",
+        "recordHash",
+        "source"
+      ],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "instanceId": {"$ref":"#/$defs/id"},
+        "stepId": {"$ref":"#/$defs/id"},
+        "stepVersion": {"type":"string","minLength":1,"maxLength":40},
+        "checkId": {"$ref":"#/$defs/id"},
+        "targetAlias": {"type":"string","minLength":1,"maxLength":80},
+        "targetFingerprint": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "inputHash": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "observedAt": {"type":"string","format":"date-time"},
+        "operatorId": {"$ref":"#/$defs/id"},
+        "evidenceType": {"enum":["structured","fixed-option","screenshot-ref"]},
+        "commandId": {"$ref":"#/$defs/id"},
+        "redactedOutput": {"type":"string","minLength":1,"maxLength":1600},
+        "facts": {"type":"array","items":{"$ref":"#/$defs/fact"},"minItems":0,"maxItems":64},
+        "result": {"enum":["pass","fail","waiting","unknown","forbidden","stale","invalid"]},
+        "recordHash": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "screenshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ref","sha256","redactionReviewed"],
+          "properties": {
+            "ref": {"$ref":"#/$defs/id"},
+            "sha256": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+            "redactionReviewed": {"type":"boolean"}
+          }
+        },
+        "source": {"$ref":"#/$defs/source"},
+        "reasonCode": {
+          "enum": [
+            "field-missing",
+            "type-mismatch",
+            "unit-mismatch",
+            "permission",
+            "forbidden",
+            "target-changed",
+            "expired",
+            "check-failed",
+            "unavailable",
+            "truncated",
+            "waiting-for-readiness",
+            "scope-mismatch"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"evidenceType":{"const":"screenshot-ref"}}},
+          "then": {
+            "required": ["screenshot"],
+            "properties": {"screenshot":{"properties":{"redactionReviewed":{"const":true}}}}
+          }
+        },
+        {"if":{"properties":{"result":{"const":"pass"}}},"then":{"properties":{"facts":{"minItems":1}}}},
+        {
+          "if": {"properties":{"result":{"enum":["fail","unknown","invalid","forbidden","stale"]}}},
+          "then": {"required":["reasonCode"]}
+        }
+      ]
+    },
+    "evidencePack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion","kind","projectId","planRevision","versionLockId","exportedAt","records","id"],
+      "properties": {
+        "schemaVersion": {"const":"2.1"},
+        "kind": {"const":"xingtu-deployment-evidence"},
+        "projectId": {"$ref":"#/$defs/id"},
+        "planRevision": {"type":"integer","minimum":1,"maximum":9007199254740991},
+        "versionLockId": {"$ref":"#/$defs/id"},
+        "exportedAt": {"type":"string","format":"date-time"},
+        "records": {"type":"array","items":{"$ref":"#/$defs/record"},"minItems":0,"maxItems":4096},
+        "id": {"$ref":"#/$defs/id"}
+      }
+    },
+    "askRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question","stepId","symptomOptionIds","stepVersion"],
+      "properties": {
+        "question": {"type":"string","minLength":1,"maxLength":600},
+        "stepId": {"$ref":"#/$defs/id"},
+        "symptomOptionIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":8,"uniqueItems":true},
+        "stepVersion": {"type":"string","maxLength":40,"minLength":1}
+      }
+    },
+    "askResponse": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status","nextCheck","where","expected","ifDifferent","references"],
+          "properties": {
+            "status": {"const":"answered"},
+            "nextCheck": {"type":"string","minLength":1,"maxLength":800},
+            "where": {"type":"string","minLength":1,"maxLength":200},
+            "expected": {"type":"string","minLength":1,"maxLength":800},
+            "ifDifferent": {"type":"string","minLength":1,"maxLength":800},
+            "references": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["stepId","sourceId","stepVersion"],
+                "properties": {
+                  "stepId": {"$ref":"#/$defs/id"},
+                  "sourceId": {"$ref":"#/$defs/id"},
+                  "stepVersion": {"type":"string","maxLength":40,"minLength":1}
+                }
+              },
+              "minItems": 1,
+              "maxItems": 8
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status","reason"],
+          "properties": {
+            "status": {"const":"no-match"},
+            "reason": {"enum":["insufficient-evidence","out-of-scope","unverified-source"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status","reason"],
+          "properties": {
+            "status": {"const":"rejected"},
+            "reason": {
+              "enum": [
+                "sensitive-content",
+                "consent-required",
+                "rate-limited",
+                "project-forbidden",
+                "offline",
+                "provider-not-approved",
+                "invalid-request",
+                "step-version-mismatch"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "kind",
+        "revision",
+        "project",
+        "components",
+        "steps",
+        "rollbackPlans",
+        "manifestHash",
+        "versionLockId",
+        "evidencePackId",
+        "evidencePackHash"
+      ],
+      "properties": {
+        "schemaVersion": {"const":"2.1"},
+        "kind": {"const":"xingtu-deployment-order"},
+        "revision": {"type":"integer","minimum":1,"maximum":9007199254740991},
+        "project": {"$ref":"#/$defs/project"},
+        "components": {"type":"array","items":{"$ref":"#/$defs/component"},"minItems":1,"maxItems":512},
+        "steps": {"type":"array","items":{"$ref":"#/$defs/step"},"minItems":1,"maxItems":2048},
+        "rollbackPlans": {"type":"array","items":{"$ref":"#/$defs/rollback"},"minItems":0,"maxItems":128},
+        "handover": {"$ref":"#/$defs/handoverRecord"},
+        "manifestHash": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+        "versionLockId": {"$ref":"#/$defs/id"},
+        "evidencePackId": {"$ref":"#/$defs/id"},
+        "evidencePackHash": {"type":"string","pattern":"^[a-f0-9]{64}$"}
+      }
+    },
+    "handoverRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectId",
+        "planRevision",
+        "versionLockId",
+        "disposition",
+        "completedInstanceIds",
+        "openIssues",
+        "rollbackPointRefs",
+        "contactRefs",
+        "observation"
+      ],
+      "properties": {
+        "projectId": {"$ref":"#/$defs/id"},
+        "planRevision": {"type":"integer","minimum":1},
+        "versionLockId": {"$ref":"#/$defs/id"},
+        "disposition": {"enum":["pending","conditional","accepted"]},
+        "completedInstanceIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":2048},
+        "openIssues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code","summary","ownerId","dueAt","blocking"],
+            "properties": {
+              "code": {"$ref":"#/$defs/id"},
+              "summary": {"type":"string","minLength":1,"maxLength":300},
+              "ownerId": {"$ref":"#/$defs/id"},
+              "dueAt": {"type":"string","format":"date-time"},
+              "blocking": {"type":"boolean"}
+            }
+          },
+          "minItems": 0,
+          "maxItems": 128
+        },
+        "rollbackPointRefs": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":128},
+        "contactRefs": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":1,"maxItems":32},
+        "observation": {"type":"array","items":{"$ref":"#/$defs/observation"},"minItems":0,"maxItems":2},
+        "observationStartedAt": {"type":"string","format":"date-time"},
+        "acceptance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["customerRef","signoffRef","acceptedAt"],
+          "properties": {
+            "customerRef": {"$ref":"#/$defs/id"},
+            "signoffRef": {"$ref":"#/$defs/id"},
+            "acceptedAt": {"type":"string","format":"date-time"}
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"disposition":{"const":"accepted"}}},
+          "then": {
+            "required": ["acceptance","observationStartedAt"],
+            "properties": {
+              "observation": {
+                "minItems": 2,
+                "maxItems": 2,
+                "allOf": [
+                  {
+                    "contains": {
+                      "properties": {"afterHours":{"const":2},"status":{"const":"passed"}},
+                      "required": ["afterHours","status"]
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "properties": {"afterHours":{"const":24},"status":{"const":"passed"}},
+                      "required": ["afterHours","status"]
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "unit": {"enum":["seconds","milliseconds","bytes","count","percent","cores","millicores"]},
+    "retry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxAttempts","backoffSeconds","retryOn"],
+      "properties": {
+        "maxAttempts": {"type":"integer","minimum":1,"maximum":8},
+        "backoffSeconds": {"type":"integer","minimum":0,"maximum":3600},
+        "retryOn": {
+          "type": "array",
+          "items": {"enum":["timeout","transient-network","rate-limited"]},
+          "minItems": 0,
+          "maxItems": 3,
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties":{"maxAttempts":{"const":1}}},
+          "then": {"properties":{"retryOn":{"maxItems":0},"backoffSeconds":{"const":0}}},
+          "else": {"properties":{"retryOn":{"minItems":1},"backoffSeconds":{"minimum":1}}}
+        }
+      ]
+    },
+    "bindingAlternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value","origin","originRef"],
+      "properties": {
+        "value": {"oneOf":[{"type":"string","minLength":1,"maxLength":512},{"type":"integer","minimum":1,"maximum":65535}]},
+        "origin": {"enum":["project","manifest","confirmed-evidence","approved-default"]},
+        "originRef": {"type":"string","maxLength":240,"minLength":1}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["afterHours","dueAt","ownerId","recheckIds","status","evidenceIds"],
+      "properties": {
+        "afterHours": {"enum":[2,24]},
+        "dueAt": {"type":"string","format":"date-time"},
+        "ownerId": {"$ref":"#/$defs/id"},
+        "recheckIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":1,"maxItems":128},
+        "status": {"enum":["pending","passed","failed","na"]},
+        "evidenceIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":128},
+        "reason": {"type":"string","minLength":1,"maxLength":200}
+      },
+      "allOf": [
+        {"if":{"properties":{"status":{"const":"passed"}}},"then":{"properties":{"evidenceIds":{"minItems":1}}}},
+        {"if":{"properties":{"status":{"const":"na"}}},"then":{"required":["reason"]}}
+      ]
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kubernetes","sealos","easyManager","product","chartIds","imageIds"],
+      "properties": {
+        "kubernetes": {"type":"string","maxLength":80,"minLength":1},
+        "sealos": {"type":"string","maxLength":80,"minLength":1},
+        "easyManager": {"type":"string","maxLength":80,"minLength":1},
+        "product": {"type":"string","maxLength":80,"minLength":1},
+        "chartIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true},
+        "imageIds": {"type":"array","items":{"$ref":"#/$defs/id"},"minItems":0,"maxItems":512,"uniqueItems":true}
+      }
+    },
+    "auditEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","projectId","actorId","objectId","occurredAt","action","result","reasonCode"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id"},
+        "projectId": {"$ref":"#/$defs/id"},
+        "actorId": {"$ref":"#/$defs/id"},
+        "objectId": {"$ref":"#/$defs/id"},
+        "occurredAt": {"type":"string","format":"date-time"},
+        "action": {"enum":["read","modify","import","export","ask","review","approve","rollback","sign-off"]},
+        "result": {"enum":["allowed","denied","error"]},
+        "reasonCode": {"$ref":"#/$defs/id"},
+        "requestId": {"$ref":"#/$defs/id"},
+        "providerId": {"$ref":"#/$defs/id"},
+        "dataRegion": {"type":"string","maxLength":80,"minLength":1},
+        "consentRef": {"$ref":"#/$defs/id"},
+        "durationMs": {"type":"integer","minimum":0,"maximum":86400000}
+      }
+    }
+  }
+}

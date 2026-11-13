@@ -1,0 +1,529 @@
+{
+  "schemaVersion": "2.1",
+  "kind": "xingtu-deployment-order",
+  "revision": 1,
+  "project": {
+    "id": "fixture-multimodal",
+    "customerAlias": "虚构客户",
+    "siteAlias": "模拟测试站点",
+    "environment": "fixture",
+    "mode": "offline",
+    "route": "new-sealos-em",
+    "manifestId": "fixture-bundle",
+    "nodes": [
+      {
+        "id": "node-a",
+        "alias": "模拟部署与管理节点",
+        "host": "node-a.example.invalid",
+        "roles": ["deploy","control-plane"],
+        "architecture": "amd64",
+        "materialRoot": "/data/delivery"
+      }
+    ],
+    "workstations": [
+      {"id":"client-browser","alias":"模拟客户浏览器","purpose":"customer-browser"},
+      {"id":"operator-browser","alias":"模拟 EM 操作电脑","purpose":"em-browser"}
+    ],
+    "endpoints": [
+      {"id":"portal-endpoint","host":"portal.example.invalid","port":443,"tls":true},
+      {"id":"registry-endpoint","host":"registry.example.invalid","port":443,"tls":true}
+    ],
+    "networkChecks": [
+      {
+        "id": "portal-path",
+        "sourceId": "client-browser",
+        "targetEndpointId": "portal-endpoint",
+        "protocol": "https",
+        "purpose": "从验收人使用的电脑访问门户",
+        "timeoutSeconds": 30,
+        "required": true,
+        "checkIds": ["client-can-sign-in"]
+      }
+    ],
+    "cluster": {
+      "context": "fixture-context",
+      "identityRef": "fixture-cluster",
+      "productNamespace": "fixture-product",
+      "emNamespace": "fixture-em"
+    },
+    "storage": {"type":"local","locationRef":"fixture-data-root"},
+    "moduleIds": ["multi-modal"],
+    "conditions": [{"id":"optional-addon","selected":false}],
+    "reuse": [{"resource":"k8s","mode":"new","requiredCheckIds":[]},{"resource":"em","mode":"new","requiredCheckIds":[]}],
+    "changeWindow": {"startsAt":"2026-11-12T02:00:00Z","endsAt":"2026-11-12T10:00:00Z","approvalRef":"fixture-window"},
+    "policy": {"allowResultImport":true,"allowHermes":false,"exportAllowed":true}
+  },
+  "components": [
+    {
+      "id": "ingress-nginx",
+      "name": "ingress-nginx",
+      "providedBy": "sealos-bundled",
+      "scope": "required",
+      "deployOrder": 10,
+      "dependsOn": [],
+      "precedes": [],
+      "imageIds": [],
+      "verifyCheckIds": ["ingress-ready"],
+      "source": {
+        "file": "deployment-contract-v2.1.example.json",
+        "section": "模拟数据，示例值不可用于现场",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "confidence": "unverified",
+        "reproductions": 0
+      }
+    },
+    {
+      "id": "ai-runtime",
+      "name": "ai-runtime",
+      "providedBy": "image-only",
+      "scope": "required",
+      "deployOrder": 20,
+      "dependsOn": [],
+      "precedes": [],
+      "imageIds": ["ai-runtime"],
+      "verifyCheckIds": ["image-pull-ok"],
+      "source": {
+        "file": "deployment-contract-v2.1.example.json",
+        "section": "模拟数据，示例值不可用于现场",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "confidence": "unverified",
+        "reproductions": 0
+      }
+    },
+    {
+      "id": "ai-base",
+      "name": "ai-base",
+      "providedBy": "chart",
+      "scope": "required",
+      "deployOrder": 30,
+      "dependsOn": ["ingress-nginx","ai-runtime"],
+      "precedes": [],
+      "imageIds": ["ai-runtime"],
+      "verifyCheckIds": ["ai-release-ready"],
+      "source": {
+        "file": "deployment-contract-v2.1.example.json",
+        "section": "模拟数据，示例值不可用于现场",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "confidence": "unverified",
+        "reproductions": 0
+      },
+      "chartId": "ai-base"
+    },
+    {
+      "id": "ai-addon",
+      "name": "ai-addon",
+      "providedBy": "chart",
+      "scope": "conditional",
+      "deployOrder": 40,
+      "dependsOn": ["ai-base"],
+      "precedes": [],
+      "imageIds": [],
+      "verifyCheckIds": [],
+      "source": {
+        "file": "deployment-contract-v2.1.example.json",
+        "section": "模拟数据，示例值不可用于现场",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "confidence": "unverified",
+        "reproductions": 0
+      },
+      "conditionId": "optional-addon",
+      "chartId": "ai-addon"
+    }
+  ],
+  "steps": [
+    {
+      "instanceId": "fixture-ingress",
+      "stepId": "check-ingress",
+      "stepVersion": "2.1.0",
+      "projectId": "fixture-multimodal",
+      "planRevision": 1,
+      "status": "passed",
+      "dependsOnInstanceIds": [],
+      "params": [
+        {
+          "key": "context",
+          "type": "id",
+          "value": "fixture-context",
+          "origin": "project",
+          "originRef": "cluster.context",
+          "status": "confirmed"
+        },
+        {
+          "key": "namespace",
+          "type": "namespace",
+          "value": "fixture-ingress",
+          "origin": "approved-default",
+          "originRef": "fixture-sop#ingress",
+          "status": "confirmed"
+        }
+      ],
+      "commands": [
+        {
+          "id": "ingress-status",
+          "kind": "terminal",
+          "target": {"role":"control-plane","ref":"node-a","shell":"sh"},
+          "argv": [
+            "kubectl",
+            "--context",
+            {"param":"context"},
+            "-n",
+            {"param":"namespace"},
+            "get",
+            "deployment",
+            "ingress-nginx-controller",
+            "-o",
+            "json"
+          ],
+          "requiresCheckIds": [],
+          "expected": "从本次对象读取就绪副本",
+          "timeoutSeconds": 180,
+          "idempotency": "read-only",
+          "risk": "normal",
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          },
+          "templateRef": "ingress-status",
+          "templateHash": "0671e92d0ef83ddada899e43f8525363067a3bed765ff8a35a953d600b0cdcb0",
+          "retry": {"maxAttempts":1,"backoffSeconds":0,"retryOn":[]},
+          "credentialMode": "none"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ingress-ready",
+          "layer": "runtime",
+          "required": true,
+          "target": {"role":"control-plane","ref":"node-a"},
+          "kind": "probe",
+          "evaluatorRef": "fixture-deployment-status-v1",
+          "expectations": [{"fact":"ready-replicas","operator":"eq","value":1,"unit":"count"}],
+          "evidenceTypes": ["structured"],
+          "ttlSeconds": 1800,
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          },
+          "commandId": "ingress-status"
+        }
+      ],
+      "evidenceIds": ["e-ingress"],
+      "operatorId": "fixture-operator",
+      "risk": "normal",
+      "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "updatedAt": "2026-11-12T02:00:00Z",
+      "componentId": "ingress-nginx"
+    },
+    {
+      "instanceId": "fixture-image",
+      "stepId": "verify-registry-image",
+      "stepVersion": "2.1.0",
+      "projectId": "fixture-multimodal",
+      "planRevision": 1,
+      "status": "pending",
+      "dependsOnInstanceIds": [],
+      "params": [],
+      "commands": [
+        {
+          "id": "confirm-image-pull",
+          "kind": "manual",
+          "target": {"role":"control-plane","ref":"node-a"},
+          "instructionRef": "fixture-image-check",
+          "requiresCheckIds": [],
+          "expected": "仓库摘要正确，目标身份可拉取",
+          "timeoutSeconds": 180,
+          "idempotency": "verify-before-retry",
+          "risk": "normal",
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          },
+          "templateRef": "confirm-image-pull",
+          "templateHash": "3392482e6b99e0158f1fc90562b6c810ce20f419a38d6f42794980f844e38131",
+          "retry": {"maxAttempts":1,"backoffSeconds":0,"retryOn":[]},
+          "credentialMode": "none"
+        }
+      ],
+      "checks": [
+        {
+          "id": "image-pull-ok",
+          "layer": "runtime",
+          "required": true,
+          "target": {"role":"control-plane","ref":"node-a"},
+          "kind": "fixed-option",
+          "optionSetRef": "fixture-image-pull-options",
+          "expectations": [{"fact":"image-pull","operator":"eq","value":"ok"}],
+          "evidenceTypes": ["fixed-option"],
+          "ttlSeconds": 1800,
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          }
+        }
+      ],
+      "evidenceIds": [],
+      "operatorId": null,
+      "risk": "normal",
+      "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "updatedAt": "2026-11-12T02:00:00Z",
+      "componentId": "ai-runtime"
+    },
+    {
+      "instanceId": "fixture-ai",
+      "stepId": "install-ai-base",
+      "stepVersion": "2.1.0",
+      "projectId": "fixture-multimodal",
+      "planRevision": 1,
+      "status": "blocked",
+      "dependsOnInstanceIds": ["fixture-ingress","fixture-image"],
+      "params": [],
+      "commands": [
+        {
+          "id": "install-ai-from-em",
+          "kind": "em-ui",
+          "target": {"role":"em-browser","ref":"operator-browser","namespace":"fixture-product","resourceRef":"ai-base"},
+          "instructionRef": "fixture-em-install-ai",
+          "requiresCheckIds": ["ingress-ready","image-pull-ok"],
+          "expected": "目标发布进入待核验状态",
+          "timeoutSeconds": 180,
+          "idempotency": "verify-before-retry",
+          "risk": "normal",
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          },
+          "templateRef": "install-ai-from-em",
+          "templateHash": "d23900a0fa9c051502d16ac28b91cec1f63cd211abf9d2a61060a021f6ffa9a0",
+          "retry": {"maxAttempts":1,"backoffSeconds":0,"retryOn":[]},
+          "credentialMode": "none"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ai-release-ready",
+          "layer": "runtime",
+          "required": true,
+          "target": {"role":"em-browser","ref":"operator-browser","namespace":"fixture-product","resourceRef":"ai-base"},
+          "kind": "fixed-option",
+          "optionSetRef": "fixture-release-options",
+          "expectations": [{"fact":"release-readiness","operator":"eq","value":"ready"}],
+          "evidenceTypes": ["fixed-option"],
+          "ttlSeconds": 1800,
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          }
+        }
+      ],
+      "evidenceIds": [],
+      "operatorId": null,
+      "risk": "normal",
+      "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "updatedAt": "2026-11-12T02:00:00Z",
+      "componentId": "ai-base",
+      "reasonCode": "prerequisite-evidence-missing"
+    },
+    {
+      "instanceId": "fixture-portal",
+      "stepId": "smoke-portal",
+      "stepVersion": "2.1.0",
+      "projectId": "fixture-multimodal",
+      "planRevision": 1,
+      "status": "pending",
+      "dependsOnInstanceIds": ["fixture-ai"],
+      "params": [],
+      "commands": [
+        {
+          "id": "visit-portal",
+          "kind": "browser",
+          "target": {"role":"client-pc","ref":"client-browser"},
+          "instructionRef": "fixture-portal-login",
+          "requiresCheckIds": [],
+          "expected": "验收人在实际使用的电脑成功登录目标门户",
+          "timeoutSeconds": 180,
+          "idempotency": "verify-before-retry",
+          "risk": "normal",
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          },
+          "templateRef": "visit-portal",
+          "templateHash": "0c6016cdc585316338b5ed6448e6f79ce321f58a37c009fe985494a3ca521f95",
+          "retry": {"maxAttempts":1,"backoffSeconds":0,"retryOn":[]},
+          "credentialMode": "none"
+        }
+      ],
+      "checks": [
+        {
+          "id": "client-can-sign-in",
+          "layer": "business",
+          "required": true,
+          "target": {"role":"client-pc","ref":"client-browser"},
+          "kind": "fixed-option",
+          "optionSetRef": "fixture-login-options",
+          "expectations": [{"fact":"business-account-login","operator":"eq","value":"ok"}],
+          "evidenceTypes": ["fixed-option"],
+          "ttlSeconds": 1800,
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          }
+        }
+      ],
+      "evidenceIds": [],
+      "operatorId": null,
+      "risk": "normal",
+      "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "updatedAt": "2026-11-12T02:00:00Z"
+    },
+    {
+      "instanceId": "fixture-disk-reset",
+      "stepId": "disk-reinitialization",
+      "stepVersion": "2.1.0",
+      "projectId": "fixture-multimodal",
+      "planRevision": 1,
+      "status": "blocked",
+      "dependsOnInstanceIds": [],
+      "params": [],
+      "commands": [
+        {
+          "id": "disk-reset-manual",
+          "kind": "manual",
+          "target": {"role":"control-plane","ref":"node-a"},
+          "instructionRef": "fixture-disk-procedure",
+          "requiresCheckIds": ["fixture-verified-backup"],
+          "expected": "此项仅演示闸门，现场操作须来自批准说明",
+          "timeoutSeconds": 180,
+          "idempotency": "manual-recovery",
+          "risk": "data-loss",
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          },
+          "rollbackId": "fixture-disk-restore",
+          "templateRef": "disk-reset-manual",
+          "templateHash": "6f6a1db41c1a115a92df60fb29fb85b7078195271dd3712beac77bf87144dffe",
+          "retry": {"maxAttempts":1,"backoffSeconds":0,"retryOn":[]},
+          "credentialMode": "none"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fixture-verified-backup",
+          "layer": "declared",
+          "required": true,
+          "target": {"role":"control-plane","ref":"node-a"},
+          "kind": "fixed-option",
+          "optionSetRef": "fixture-backup-options",
+          "expectations": [{"fact":"backup-verified","operator":"eq","value":true}],
+          "evidenceTypes": ["fixed-option"],
+          "ttlSeconds": 1800,
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          }
+        },
+        {
+          "id": "storage-recovered",
+          "layer": "runtime",
+          "required": true,
+          "target": {"role":"control-plane","ref":"node-a"},
+          "kind": "fixed-option",
+          "optionSetRef": "fixture-recovery-options",
+          "expectations": [{"fact":"storage-recovery","operator":"eq","value":"ok"}],
+          "evidenceTypes": ["fixed-option"],
+          "ttlSeconds": 1800,
+          "source": {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "unverified",
+            "reproductions": 0
+          }
+        }
+      ],
+      "evidenceIds": [],
+      "operatorId": null,
+      "risk": "data-loss",
+      "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "updatedAt": "2026-11-12T02:00:00Z",
+      "reasonCode": "risk-gate-missing"
+    }
+  ],
+  "rollbackPlans": [
+    {
+      "id": "fixture-disk-restore",
+      "stage": "storage",
+      "preconditions": ["fixture-verified-backup"],
+      "actions": ["fixture-restore-from-verified-copy"],
+      "dataLoss": "只有已验证备份可用于恢复，备份之后的写入可能丢失。",
+      "approvalRole": "customer-approver",
+      "recheckIds": ["storage-recovered"],
+      "source": {
+        "file": "deployment-contract-v2.1.example.json",
+        "section": "模拟数据，示例值不可用于现场",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "confidence": "unverified",
+        "reproductions": 0
+      }
+    }
+  ],
+  "handover": {
+    "projectId": "fixture-multimodal",
+    "planRevision": 1,
+    "versionLockId": "fixture-lock",
+    "disposition": "pending",
+    "completedInstanceIds": ["fixture-ingress"],
+    "openIssues": [
+      {
+        "code": "image-check-pending",
+        "summary": "模拟仓库可拉取检查未完成。",
+        "ownerId": "fixture-operator",
+        "dueAt": "2026-11-12T04:00:00Z",
+        "blocking": true
+      }
+    ],
+    "rollbackPointRefs": [],
+    "contactRefs": ["fixture-contact"],
+    "observation": []
+  },
+  "manifestHash": "c3bbbfe0164dbdfc74a98ad78313de0d49fe0c3ecb1d2af94ddf8a7df413d7a8",
+  "versionLockId": "fixture-lock",
+  "evidencePackId": "fixture-evidence",
+  "evidencePackHash": "06f73b675fdbf0ecead232a94dfee02b54b61109d9ce9cd07ee8248c10d8428c"
+}

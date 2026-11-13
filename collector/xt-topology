@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# One approved Namespace. No Secret, ConfigMap values, logs, exec, or kubeconfig export.
+set -u
+export LC_ALL=C
+project=''; cluster=''; ns=''
+for arg in "$@"; do
+  case "$arg" in --project=*) project=${arg#*=} ;; --cluster=*) cluster=${arg#*=} ;; --namespace=*) ns=${arg#*=} ;; *) printf 'Unsupported argument\n' >&2; exit 2 ;; esac
+done
+for value in "$project" "$cluster" "$ns"; do
+  [[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$ ]] || { printf 'Use --project=ID --cluster=ID --namespace=NAME\n' >&2; exit 2; }
+done
+command -v kubectl >/dev/null 2>&1 || { printf 'L2 unavailable: kubectl is not installed. Use L0/L1 guidance.\n' >&2; exit 2; }
+quote() { local value=$1; value=${value//\\/\\\\}; value=${value//\"/\\\"}; value=${value//$'\r'/}; value=${value//$'\n'/}; value=${value//$'\t'/}; printf '"%s"' "$value"; }
+labels() {
+  local raw=$1 result='' entry key value
+  COMPLETE=true
+  if [[ "$raw" != map\[*\] ]]; then printf '{}'; COMPLETE=false; return; fi
+  raw=${raw#map[}; raw=${raw%]}
+  for entry in $raw; do
+    key=${entry%%:*}; value=${entry#*:}
+    case "$key" in app|app.kubernetes.io/name|app.kubernetes.io/instance|component|release|dtstack.com/component) ;;
+      *) COMPLETE=false; continue ;;
+    esac
+    [[ "$value" =~ ^[a-zA-Z0-9._-]{0,63}$ ]] || { COMPLETE=false; continue; }
+    [ -z "$result" ] || result+=','
+    result+="$(quote "$key"):$(quote "$value")"
+  done
+  printf '{%s}' "$result"
+}
+declare -A arrays states counts
+budget=0; truncated=false
+for category in workloads replicaSets pods services; do arrays[$category]=''; states[$category]=ok; counts[$category]=0; done
+add() {
+  local key=$1 record=$2
+  if (( ${counts[$key]} >= 250 || budget + ${#record} > 18000 )); then truncated=true; return; fi
+  [ -z "${arrays[$key]}" ] || arrays[$key]+=','
+  arrays[$key]+=$record; counts[$key]=$(( ${counts[$key]} + 1 )); budget=$((budget+${#record}+1))
+}
+get_rows() {
+  local category=$1 resource=$2 path=$3
+  if rows=$(kubectl get "$resource" -n "$ns" --request-timeout=12s -o "jsonpath=$path" 2>&1); then states[$category]=ok;
+  else
+    states[$category]=error
+    [[ "$rows" == *Forbidden* || "$rows" == *forbidden* ]] && states[$category]=forbidden
+    rows=''
+  fi
+}
+get_rows workloads 'deployments,statefulsets,daemonsets,jobs,cronjobs' '{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.uid}{"|"}{.kind}{"|"}{.status.readyReplicas}{"|"}{.spec.replicas}{"|"}{.status.numberReady}{"|"}{.status.desiredNumberScheduled}{"|"}{.spec.template.spec.containers[0].image}{"|"}{.spec.template.metadata.labels}{"\n"}{end}'
+while IFS='|' read -r objns name uid kind ready desired dsready dswanted image labelmap; do
+  [ -n "$name" ] || continue
+  if ((budget>16000)); then truncated=true; break; fi
+  case "$kind" in DaemonSet) ready=${dsready:-0}; desired=${dswanted:-0} ;; Deployment|StatefulSet) ready=${ready:-0}; desired=${desired:-1} ;; *) ready='?'; desired='' ;; esac
+  if [ "$ready" = '?' ]; then readiness='?'; else readiness="$ready/$desired"; fi
+  labeljson=$(labels "$labelmap")
+  add workloads "{\"ns\":$(quote "$objns"),\"name\":$(quote "$name"),\"uid\":$(quote "$uid"),\"kind\":$(quote "$kind"),\"ready\":$(quote "$readiness"),\"image\":$(quote "$image"),\"labels\":$labeljson}"
+done <<< "$rows"
+get_rows replicaSets replicasets '{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.uid}{"|"}{.metadata.ownerReferences[?(@.controller==true)].uid}{"|"}{.metadata.ownerReferences[?(@.controller==true)].kind}{"\n"}{end}'
+while IFS='|' read -r objns name uid owner kind; do
+  [ -n "$name" ] || continue
+  if ((budget>16000)); then truncated=true; break; fi
+  add replicaSets "{\"ns\":$(quote "$objns"),\"name\":$(quote "$name"),\"uid\":$(quote "$uid"),\"ownerUid\":$(quote "$owner"),\"ownerKind\":$(quote "$kind")}"
+done <<< "$rows"
+get_rows pods pods '{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.uid}{"|"}{.status.phase}{"|"}{.status.containerStatuses[*].ready}{"|"}{.spec.containers[*].name}{"|"}{.spec.nodeName}{"|"}{.metadata.ownerReferences[?(@.controller==true)].uid}{"|"}{.metadata.ownerReferences[?(@.controller==true)].kind}{"|"}{.metadata.ownerReferences[?(@.controller==true)].name}{"|"}{.status.containerStatuses[0].restartCount}{"|"}{.spec.containers[0].image}{"|"}{.status.containerStatuses[0].imageID}{"|"}{.status.containerStatuses[0].state.waiting.reason}{"|"}{.status.containerStatuses[0].state.terminated.reason}{"|"}{.status.initContainerStatuses[0].state.waiting.reason}{"|"}{.metadata.labels}{"\n"}{end}'
+while IFS='|' read -r objns name uid phase flags containers node owner ownerkind ownername restarts image imageid waiting term init labelmap; do
+  [ -n "$name" ] || continue
+  if ((budget>16000)); then truncated=true; break; fi
+  desired=0; ready=0
+  for item in $containers; do desired=$((desired+1)); done
+  for item in $flags; do [ "$item" != true ] || ready=$((ready+1)); done
+  restarts=${restarts:-0}; phase=${phase:-Unknown}; reason=${waiting:-${init:-$term}}
+  [[ "$restarts" =~ ^[0-9]+$ ]] || restarts=0
+  labeljson=$(labels "$labelmap")
+  add pods "{\"ns\":$(quote "$objns"),\"name\":$(quote "$name"),\"uid\":$(quote "$uid"),\"phase\":$(quote "$phase"),\"ready\":\"$ready/$desired\",\"node\":$(quote "$node"),\"ownerUid\":$(quote "$owner"),\"ownerKind\":$(quote "$ownerkind"),\"ownerName\":$(quote "$ownername"),\"restarts\":$restarts,\"image\":$(quote "$image"),\"imageID\":$(quote "$imageid"),\"reason\":$(quote "$reason"),\"labels\":$labeljson}"
+done <<< "$rows"
+get_rows services services '{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.uid}{"|"}{.spec.selector}{"|"}{.spec.ports[*].port}{"\n"}{end}'
+while IFS='|' read -r objns name uid selector ports; do
+  [ -n "$name" ] || continue
+  if ((budget>16000)); then truncated=true; break; fi
+  # command substitution isolates shell variables: derive completeness separately.
+  selectorjson=$(labels "$selector"); selectorComplete=true; raw=${selector#map[}; raw=${raw%]}
+  [[ "$selector" == map\[*\] ]] || selectorComplete=false
+  for entry in $raw; do case "${entry%%:*}" in app|app.kubernetes.io/name|app.kubernetes.io/instance|component|release|dtstack.com/component) ;; *) selectorComplete=false ;; esac; done
+  portjson=''; for item in $ports; do [[ "$item" =~ ^[0-9]+$ ]] || continue; [ -z "$portjson" ] || portjson+=','; portjson+=$item; done
+  add services "{\"ns\":$(quote "$objns"),\"name\":$(quote "$name"),\"uid\":$(quote "$uid"),\"selector\":$selectorjson,\"selectorComplete\":$selectorComplete,\"ports\":[$portjson]}"
+done <<< "$rows"
+timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"kind":"xingtu-k8s-topology","version":1,"projectId":%s,"clusterId":%s,"namespace":%s,"generatedAt":"%s","isDemo":false,"collection":{"workloads":"%s","replicaSets":"%s","pods":"%s","services":"%s","truncated":%s},"workloads":[%s],"replicaSets":[%s],"pods":[%s],"services":[%s]}\n' "$(quote "$project")" "$(quote "$cluster")" "$(quote "$ns")" "$timestamp" "${states[workloads]}" "${states[replicaSets]}" "${states[pods]}" "${states[services]}" "$truncated" "${arrays[workloads]}" "${arrays[replicaSets]}" "${arrays[pods]}" "${arrays[services]}"

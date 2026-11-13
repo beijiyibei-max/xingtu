@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "2.1",
+  "kind": "xingtu-material-manifest",
+  "id": "fixture-bundle",
+  "packageList": [
+    {
+      "id": "demo-package",
+      "name": "fixture-only.tar",
+      "format": "tar-gzip",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "sizeBytes": 16384,
+      "charts": [
+        {
+          "id": "ai-base",
+          "name": "ai-base",
+          "version": "0.0.0-fixture",
+          "memberPath": "charts/ai-base/Chart.yaml",
+          "chartSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        {
+          "id": "ai-addon",
+          "name": "ai-addon",
+          "version": "0.0.0-fixture",
+          "memberPath": "charts/ai-addon/Chart.yaml",
+          "chartSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      ],
+      "images": [
+        {
+          "id": "ai-runtime",
+          "archiveMemberPath": "images/runtime.tar",
+          "archiveFormat": "oci-archive",
+          "sourceRef": "fixture/runtime:demo",
+          "registryRef": "registry.example.invalid/fixture/runtime",
+          "tag": "demo",
+          "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "platforms": ["linux/amd64"]
+        }
+      ],
+      "source": {
+        "file": "deployment-contract-v2.1.example.json",
+        "section": "模拟数据，示例值不可用于现场",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "confidence": "unverified",
+        "reproductions": 0
+      }
+    }
+  ],
+  "versionLock": {
+    "id": "fixture-lock",
+    "kubernetes": "fixture-k8s",
+    "sealos": "fixture-sealos",
+    "easyManager": "fixture-em",
+    "product": "fixture-product",
+    "packageIds": ["demo-package"],
+    "chartIds": ["ai-base","ai-addon"],
+    "imageIds": ["ai-runtime"],
+    "status": "fixture",
+    "source": {
+      "file": "deployment-contract-v2.1.example.json",
+      "section": "模拟数据，示例值不可用于现场",
+      "verifiedAt": "2026-11-12T02:00:00Z",
+      "confidence": "unverified",
+      "reproductions": 0
+    }
+  },
+  "registry": {
+    "endpointId": "registry-endpoint",
+    "tlsTrustRef": "fixture-registry-ca",
+    "pushCredentialRef": "fixture-registry-push",
+    "pullSecretRefs": [{"namespace":"fixture-product","ref":"fixture-pull-secret"}]
+  }
+}

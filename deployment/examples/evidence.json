@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.1",
+  "kind": "xingtu-deployment-evidence",
+  "projectId": "fixture-multimodal",
+  "planRevision": 1,
+  "versionLockId": "fixture-lock",
+  "exportedAt": "2026-11-12T02:00:00Z",
+  "records": [
+    {
+      "id": "e-ingress",
+      "instanceId": "fixture-ingress",
+      "stepId": "check-ingress",
+      "stepVersion": "2.1.0",
+      "checkId": "ingress-ready",
+      "targetAlias": "模拟管理节点",
+      "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "observedAt": "2026-11-12T02:00:00Z",
+      "operatorId": "fixture-operator",
+      "evidenceType": "structured",
+      "commandId": "ingress-status",
+      "redactedOutput": "就绪副本 1（模拟）",
+      "facts": [{"name":"ready-replicas","value":1,"unit":"count"}],
+      "result": "pass",
+      "recordHash": "210f629935d2c3888c01f0f8b784a05a5acea3d551c198441238747a1b964aec",
+      "source": {
+        "file": "deployment-contract-v2.1.example.json",
+        "section": "模拟数据，示例值不可用于现场",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "confidence": "unverified",
+        "reproductions": 0
+      }
+    }
+  ],
+  "id": "fixture-evidence"
+}

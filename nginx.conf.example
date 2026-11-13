@@ -1,0 +1,19 @@
+# 替换域名、证书和私钥路径；同时配置服务的 XT_PUBLIC_ORIGIN 与 XT_COOKIE_SECURE。
+server {
+    listen 443 ssl;
+    server_name xingtu.example.internal;
+    ssl_certificate /etc/nginx/certs/xingtu.crt;
+    ssl_certificate_key /etc/nginx/certs/xingtu.key;
+    client_max_body_size 1m;
+    add_header X-Content-Type-Options nosniff always;
+    location / {
+        proxy_pass http://127.0.0.1:22648;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 25s;
+        proxy_buffering off;
+    }
+}

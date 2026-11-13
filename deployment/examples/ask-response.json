@@ -1,0 +1,8 @@
+{
+  "status": "answered",
+  "nextCheck": "核对本批物料的 Chart 名称和版本。",
+  "where": "EM 应用的 Chart 包管理页面。",
+  "expected": "已上架条目与本批物料清单一致。",
+  "ifDifferent": "查看包内 Chart.yaml，按本批交付记录补传缺失项，再查仓库。",
+  "references": [{"stepId":"verify-chart-inventory","stepVersion":"2.1.0","sourceId":"deployment-review-d11"}]
+}

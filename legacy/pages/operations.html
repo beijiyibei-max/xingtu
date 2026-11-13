@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>星图 · 数栈运维工作台</title>
+  <style>:root {
+  color-scheme: dark;
+  --bg: #07101d;
+  --panel: #0d1929;
+  --panel-2: #101f32;
+  --panel-3: #13263c;
+  --line: rgba(140, 170, 207, .14);
+  --line-strong: rgba(117, 169, 231, .3);
+  --text: #edf4fc;
+  --muted: #8498b2;
+  --blue: #5ba8ff;
+  --cyan: #48d6c5;
+  --amber: #efbd62;
+  --red: #ff6e82;
+  --pink: #ec83bf;
+  --green: #58d39f;
+  font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; min-width: 0; height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--text); }
+body { background-image: radial-gradient(circle at 75% -20%, rgba(54, 116, 190, .15), transparent 35%), linear-gradient(145deg, #07101d, #081321 60%, #07101a); }
+button, select, input, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+
+.app-shell { height: 100%; display: grid; grid-template: 66px 1fr / 218px 1fr; }
+.topbar { grid-column: 1 / -1; display: grid; grid-template-columns: 218px 1fr auto; align-items: center; border-bottom: 1px solid var(--line); background: rgba(7, 15, 27, .92); box-shadow: 0 10px 30px rgba(0,0,0,.16); }
+.brand { height: 100%; display: flex; align-items: center; gap: 11px; padding: 0 18px; border-right: 1px solid var(--line); }
+.brand-mark { width: 31px; height: 31px; display: grid; place-items: center; color: #bfe3ff; border: 1px solid rgba(99,174,255,.4); border-radius: 9px; background: linear-gradient(145deg,rgba(46,113,190,.6),rgba(51,70,139,.34)); box-shadow: 0 0 20px rgba(78,151,237,.18); }
+.brand strong, .brand small { display: block; }
+.brand strong { font-size: 17px; letter-spacing: .16em; }
+.brand small { margin-top: 2px; color: #7087a4; font-size: 9px; }
+.environment-bar { display: flex; align-items: center; gap: 10px; padding-left: 20px; }
+.mode-badge { padding: 4px 7px; color: #8ddfc9; border: 1px solid rgba(76,206,170,.24); border-radius: 999px; background: rgba(44,154,127,.09); font-size: 8px; letter-spacing: .09em; }
+.mode-badge.demo { color: #e9bd6d; border-color: rgba(233,189,109,.25); background: rgba(173,118,45,.1); }
+.mode-badge.error { color: #ff8798; border-color: rgba(255,110,130,.28); }
+.mode-badge.unavailable { color: #9aabc0; border-color: rgba(154,171,192,.22); background: rgba(94,108,126,.09); }
+.environment-name { font-size: 11px; font-weight: 600; }
+.capture-time { color: var(--muted); font-size: 9px; }
+.top-actions { display: flex; align-items: center; gap: 7px; padding-right: 16px; }
+.button { min-height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 11px; color: #dce9f8; border: 1px solid var(--line-strong); border-radius: 9px; background: #12233a; text-decoration: none; font-size: 10px; cursor: pointer; transition: .18s ease; }
+.button:hover { transform: translateY(-1px); border-color: rgba(104,179,255,.62); background: #18304d; }
+.button:disabled { opacity: .45; cursor: wait; transform: none; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #70b8ff; outline-offset: 2px; }
+.button.primary { color: #fff; border-color: rgba(82,155,238,.56); background: linear-gradient(100deg,#2869b1,#3956a5); }
+.button.secondary { background: #0d1c2e; }
+.button.danger { color: #ff9bab; border-color: rgba(255,110,130,.3); background: rgba(119,37,53,.18); }
+.button.small { min-height: 28px; padding: 0 8px; font-size: 8px; }
+.confidential-link { color: #a9e9c6; border-color: rgba(97,211,146,.34); background: rgba(36,112,75,.18); }
+.universe-link { color: #d5c9ff; border-color: rgba(152,127,239,.34); background: rgba(77,60,140,.2); }
+
+.sidebar { min-height: 0; display: flex; flex-direction: column; padding: 15px 11px; border-right: 1px solid var(--line); background: rgba(7,15,26,.72); }
+.sidebar nav { display: grid; gap: 5px; }
+.nav-item { width: 100%; height: 42px; display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 8px; padding: 0 11px; color: #8da0b8; border: 1px solid transparent; border-radius: 9px; background: transparent; text-align: left; cursor: pointer; }
+.nav-item:hover { color: #cfdef0; background: rgba(38,70,108,.2); }
+.nav-item.active { color: #eef7ff; border-color: rgba(95,159,226,.22); background: linear-gradient(100deg,rgba(41,101,165,.34),rgba(36,58,100,.22)); box-shadow: inset 3px 0 #5ba8ff; }
+.nav-item i { color: #67a9ed; font-style: normal; font-size: 15px; text-align: center; }
+.nav-item span { font-size: 11px; }
+.nav-item b { min-width: 18px; padding: 2px 5px; color: #9cb4ce; border-radius: 999px; background: rgba(97,136,181,.16); font-size: 8px; text-align: center; }
+.sidebar-note { margin-top: auto; padding: 12px; border: 1px solid rgba(89,139,194,.13); border-radius: 10px; background: rgba(14,30,49,.58); }
+.sidebar-note span { color: #56cdb3; font-size: 7px; letter-spacing: .16em; }
+.sidebar-note strong { display: block; margin-top: 5px; font-size: 9px; }
+.sidebar-note p { margin: 6px 0 0; color: #667b96; font-size: 8px; line-height: 1.55; }
+
+.workspace { min-width: 0; min-height: 0; overflow: auto; padding: 20px 24px 32px; }
+.page-header { min-height: 51px; display: flex; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
+.page-title h1 { margin: 0; font-size: 20px; letter-spacing: .02em; }
+.page-title p { margin: 6px 0 0; color: var(--muted); font-size: 10px; }
+.page-actions { display: flex; align-items: center; gap: 7px; }
+.content { max-width: 1500px; margin: 0 auto; }
+
+.hero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1fr auto; gap: 20px; padding: 21px; border: 1px solid rgba(91,160,231,.19); border-radius: 15px; background: linear-gradient(118deg,rgba(20,49,79,.92),rgba(16,33,56,.84) 55%,rgba(28,43,73,.8)); box-shadow: 0 18px 42px rgba(0,0,0,.16); }
+.hero::after { content: ""; position: absolute; right: -35px; top: -90px; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle,rgba(68,158,239,.18),transparent 66%); pointer-events: none; }
+.hero-kicker { color: #5fb7ff; font-size: 8px; letter-spacing: .17em; }
+.hero h2 { margin: 7px 0 4px; font-size: 23px; }
+.hero p { max-width: 720px; margin: 0; color: #a2b4ca; font-size: 10px; line-height: 1.7; }
+.hero-status { position: relative; z-index: 1; display: flex; align-items: center; gap: 9px; padding: 10px 13px; align-self: center; border: 1px solid rgba(87,210,168,.2); border-radius: 11px; background: rgba(12,31,42,.52); }
+.hero-status i { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green); }
+.hero-status i.warning { background: var(--amber); box-shadow: 0 0 12px var(--amber); }
+.hero-status i.error { background: var(--red); box-shadow: 0 0 12px var(--red); }
+.hero-status strong, .hero-status small { display: block; }
+.hero-status strong { font-size: 10px; }
+.hero-status small { margin-top: 2px; color: var(--muted); font-size: 8px; }
+
+.metric-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; margin-top: 12px; }
+.metric { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: rgba(13,27,45,.86); }
+.metric-head { display: flex; justify-content: space-between; color: #7890ab; font-size: 8px; }
+.metric-head i { color: #5ca6ec; font-style: normal; font-size: 13px; }
+.metric strong { display: block; margin-top: 7px; font-size: 23px; }
+.metric small { display: block; margin-top: 3px; color: #6f849d; font-size: 8px; }
+.metric.alert strong { color: #ff8d9c; }
+.metric.good strong { color: #75dcb7; }
+
+.grid-2 { display: grid; grid-template-columns: minmax(0,1.45fr) minmax(320px,.8fr); gap: 12px; margin-top: 12px; }
+.grid-even { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 12px; }
+.panel { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(12,25,42,.88); box-shadow: 0 12px 28px rgba(0,0,0,.1); }
+.panel.flush { padding: 0; overflow: hidden; }
+.panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.panel-head h2, .panel-head h3 { margin: 0; font-size: 12px; }
+.panel-head p { margin: 4px 0 0; color: #6f849e; font-size: 8px; }
+.panel-head a, .text-button { padding: 0; color: #69b4fa; border: 0; background: transparent; font-size: 8px; text-decoration: none; cursor: pointer; }
+.panel-head a:hover, .text-button:hover { color: #cbe9ff; }
+
+.change-list { display: grid; gap: 7px; }
+.change-row { display: grid; grid-template-columns: 8px minmax(170px,1fr) minmax(180px,.75fr) 72px; align-items: center; gap: 9px; padding: 10px; border: 1px solid rgba(120,159,204,.1); border-radius: 9px; background: rgba(17,35,56,.56); cursor: pointer; }
+.change-row:hover { border-color: rgba(96,169,239,.34); background: rgba(22,45,72,.72); }
+.change-row > i { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px rgba(239,189,98,.5); }
+.change-row.high > i { background: var(--red); box-shadow: 0 0 8px rgba(255,110,130,.55); }
+.change-row.low > i { background: var(--blue); }
+.change-main strong, .change-main small { display: block; }
+.change-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+.change-main small { margin-top: 3px; color: #7187a2; font-size: 7px; }
+.change-values { color: #8ea3bc; font-size: 8px; overflow-wrap: anywhere; }
+.change-values b { color: #c7d7e9; font-weight: 500; }
+.severity { justify-self: end; padding: 3px 6px; color: #d7aa5d; border: 1px solid rgba(226,177,85,.2); border-radius: 999px; font-size: 7px; }
+.severity.high { color: #ff8999; border-color: rgba(255,110,130,.22); }
+.severity.low { color: #6ab5f7; border-color: rgba(91,168,255,.22); }
+
+.health-bars { display: grid; gap: 12px; margin-top: 8px; }
+.health-bar label { display: flex; justify-content: space-between; color: #92a5bc; font-size: 8px; }
+.health-track { height: 6px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: #172b42; }
+.health-track i { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--green); }
+.health-bar.unhealthy .health-track i { background: var(--red); }
+.health-bar.unknown .health-track i { background: #7188a4; }
+.quick-actions { display: grid; grid-template-columns: repeat(2,1fr); gap: 7px; margin-top: 14px; }
+.quick-action { padding: 10px; color: #b7c8dc; border: 1px solid rgba(103,154,213,.14); border-radius: 9px; background: rgba(18,37,60,.52); text-align: left; cursor: pointer; }
+.quick-action:hover { border-color: rgba(95,171,244,.34); }
+.quick-action strong, .quick-action small { display: block; }
+.quick-action strong { font-size: 9px; }
+.quick-action small { margin-top: 4px; color: #6c829e; font-size: 7px; }
+
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(12,25,42,.82); }
+.toolbar label { color: #778da6; font-size: 8px; }
+.select, .input { height: 32px; min-width: 170px; padding: 0 9px; outline: none; color: #dce8f6; border: 1px solid rgba(108,151,202,.22); border-radius: 8px; background: #0d1c2e; font-size: 9px; }
+.select:focus, .input:focus { border-color: #4f9ee9; box-shadow: 0 0 0 3px rgba(67,142,214,.09); }
+.toolbar .spacer { flex: 1; }
+.filter-pills { display: flex; gap: 5px; }
+.filter-pill { height: 27px; padding: 0 8px; color: #8398b1; border: 1px solid rgba(107,151,202,.16); border-radius: 999px; background: transparent; font-size: 8px; cursor: pointer; }
+.filter-pill.active { color: #ddecfb; border-color: rgba(87,165,238,.4); background: rgba(47,107,170,.24); }
+.filter-pill:disabled { opacity: .45; cursor: wait; }
+
+.summary-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 12px; }
+.summary-card { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(13,27,45,.84); }
+.summary-card span { color: #768da7; font-size: 8px; }
+.summary-card strong { display: block; margin-top: 4px; font-size: 18px; }
+.summary-card.high strong { color: #ff8797; }
+
+.empty { min-height: 230px; display: grid; place-content: center; justify-items: center; padding: 25px; color: #7489a3; text-align: center; }
+.empty i { width: 56px; height: 56px; display: grid; place-items: center; color: #5c91c6; border: 1px solid rgba(85,149,213,.23); border-radius: 16px; background: rgba(27,61,96,.22); font-style: normal; font-size: 24px; }
+.empty h3 { margin: 13px 0 5px; color: #b9c9db; font-size: 12px; }
+.empty p { max-width: 420px; margin: 0; font-size: 9px; line-height: 1.65; }
+
+.table-scroll { width: 100%; overflow-x: auto; }
+.instance-table { width: 100%; min-width: 720px; border-collapse: collapse; }
+.instance-table th, .instance-table td { padding: 9px 10px; border-bottom: 1px solid rgba(116,154,196,.09); text-align: left; font-size: 8px; }
+.instance-table th { color: #6d849f; background: rgba(16,33,53,.58); font-weight: 500; }
+.instance-table td { color: #adbed0; }
+.state-dot { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #7489a3; }
+.state-dot.healthy { background: var(--green); box-shadow: 0 0 7px rgba(88,211,159,.55); }
+.state-dot.unhealthy { background: var(--red); box-shadow: 0 0 7px rgba(255,110,130,.55); }
+
+.scope-columns { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-top: 12px; }
+.scope-card { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: rgba(13,27,45,.82); }
+.scope-card h3 { margin: 0 0 9px; font-size: 10px; }
+.scope-card ul { padding: 0; margin: 0; list-style: none; }
+.scope-card li { padding: 7px 0; color: #9cafc4; border-bottom: 1px solid rgba(119,157,200,.08); font-size: 8px; line-height: 1.45; }
+.scope-card li:last-child { border-bottom: 0; }
+.scope-card li strong { color: #d3dfec; }
+
+.investigation-search { position: relative; overflow: hidden; padding: 20px; margin-bottom: 12px; border: 1px solid rgba(84,164,240,.24); border-radius: 14px; background: linear-gradient(120deg,rgba(18,48,78,.96),rgba(13,29,50,.9) 65%,rgba(30,38,75,.86)); box-shadow: 0 18px 40px rgba(0,0,0,.16); }
+.investigation-search::after { content: ""; position: absolute; z-index: 0; right: -50px; top: -120px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle,rgba(80,165,247,.18),transparent 67%); pointer-events: none; }
+.search-copy, .investigation-form, .preset-row, .source-row { position: relative; z-index: 1; }
+.search-copy > span { color: #65baff; font-size: 8px; letter-spacing: .18em; }
+.search-copy h2 { margin: 7px 0 4px; font-size: 20px; }
+.search-copy p { max-width: 760px; margin: 0; color: #8fa5be; font-size: 9px; line-height: 1.6; }
+.investigation-form { display: grid; grid-template-columns: minmax(240px,1fr) 145px auto; gap: 8px; margin-top: 15px; }
+.investigation-form .input { width: 100%; height: 39px; font-size: 10px; }
+.investigation-form .button { height: 39px; min-width: 94px; }
+.preset-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.preset-row > span { margin-right: 2px; color: #7088a4; font-size: 8px; }
+.source-row { display: flex; align-items: center; gap: 7px; margin-top: 13px; padding-top: 11px; border-top: 1px solid rgba(116,164,211,.12); }
+.source-row .source-light { width: 7px; height: 7px; border-radius: 50%; background: #667b94; }
+.source-row .source-light.ready { background: var(--green); box-shadow: 0 0 8px rgba(88,211,159,.55); }
+.source-row .source-light.demo { background: var(--amber); box-shadow: 0 0 8px rgba(239,189,98,.5); }
+.source-row .source-light.unavailable { background: #687b92; box-shadow: none; }
+.source-row strong { font-size: 8px; }
+.source-row small { color: #7188a3; font-size: 8px; }
+.source-row em { margin-left: auto; padding: 3px 6px; color: #e9bd6d; border: 1px solid rgba(233,189,109,.24); border-radius: 999px; font-size: 7px; font-style: normal; }
+.investigation-empty { padding: 0; }
+.demo-notice { display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 12px; color: #a78b55; border: 1px solid rgba(233,189,109,.2); border-radius: 9px; background: rgba(102,73,28,.13); font-size: 8px; }
+.demo-notice strong { color: #efc573; }
+.incident-hero { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 17px 19px; margin-bottom: 12px; border: 1px solid rgba(255,109,130,.18); border-radius: 12px; background: linear-gradient(120deg,rgba(74,31,45,.3),rgba(17,33,53,.86)); }
+.incident-hero > div > span { color: #ff8798; font-size: 7px; letter-spacing: .13em; }
+.incident-hero h2 { margin: 6px 0 4px; font-size: 19px; }
+.incident-hero p { margin: 0; color: #778da7; font-size: 8px; }
+.incident-hero .context-warning { display: inline-block; margin-top: 7px; padding: 4px 6px; color: #efbd62; border: 1px solid rgba(239,189,98,.2); border-radius: 6px; background: rgba(107,75,24,.12); font-size: 7px; }
+.incident-leading { min-width: 230px; padding: 10px 12px; border-radius: 9px; background: rgba(12,27,44,.66); }
+.incident-leading small, .incident-leading strong, .incident-leading span { display: block; }
+.incident-leading small { color: #7288a1; font-size: 7px; }
+.incident-leading strong { margin-top: 4px; font-size: 10px; }
+.incident-leading span { margin-top: 3px; color: #ff91a0; font-size: 8px; }
+.trace-tree { display: grid; gap: 7px; overflow-x: auto; }
+.trace-node { min-width: 560px; display: grid; grid-template-columns: 18px 25px minmax(220px,1fr) auto auto; align-items: center; gap: 9px; padding: 10px 11px; margin-left: calc(var(--trace-depth) * 27px); border: 1px solid rgba(91,161,225,.14); border-radius: 9px; background: rgba(15,33,54,.72); }
+.trace-node.error { border-color: rgba(255,105,127,.28); background: rgba(82,30,43,.26); }
+.trace-node.slow > b { color: var(--amber); }
+.trace-branch { color: #4e759c; font-size: 12px; }
+.trace-order { width: 25px; height: 25px; display: grid; place-items: center; color: #84c3fa; border-radius: 50%; background: rgba(57,125,190,.18); font-size: 10px; }
+.trace-node strong, .trace-node small { display: block; }
+.trace-node strong { font-size: 12px; }
+.trace-node small { margin-top: 3px; color: #8196ad; font-size: 11px; }
+.trace-node > b { color: #9bacc0; font-size: 11px; white-space: nowrap; }
+.quality-row { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: -4px 0 12px; }
+.quality-row span { padding: 9px 11px; color: #7f94ac; border: 1px solid rgba(112,151,194,.12); border-radius: 8px; background: rgba(13,27,45,.65); font-size: 11px; }
+.quality-row b { color: #c2d2e3; font-weight: 600; }
+.inline-copy { margin-left: 7px; padding: 2px 6px; color: #78baf4; border: 1px solid rgba(97,168,232,.23); border-radius: 5px; background: rgba(39,89,137,.15); font-size: 10px; cursor: pointer; white-space: nowrap; }
+.inline-copy:hover { color: #d9efff; border-color: rgba(97,168,232,.5); }
+.impact-evidence { margin-top: 10px; padding: 8px; color: #8da1b8; border-left: 2px solid #6684a5; background: rgba(44,67,92,.16); }
+.impact-evidence strong, .impact-evidence small { display: block; font-size: 11px; }
+.impact-evidence small { margin-top: 3px; line-height: 1.5; }
+.recommended-checks { margin-top: 10px; padding: 9px; border-radius: 8px; background: rgba(40,91,137,.12); }
+.recommended-checks > strong { color: #8fcaff; font-size: 11px; }
+.recommended-checks ul { display: grid; gap: 4px; padding-left: 17px; margin: 6px 0 0; }
+.recommended-checks li { color: #91a6bd; font-size: 11px; line-height: 1.5; }
+.error-state { border-color: rgba(255,110,130,.24); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.candidate-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin: 12px 0; }
+.candidate-card { position: relative; min-width: 0; padding: 14px; border: 1px solid rgba(113,152,195,.15); border-radius: 11px; background: rgba(13,27,45,.88); }
+.candidate-card.confidence-high { border-color: rgba(255,105,127,.28); box-shadow: inset 0 2px rgba(255,105,127,.55); }
+.candidate-card.confidence-medium { border-color: rgba(235,183,89,.24); box-shadow: inset 0 2px rgba(235,183,89,.45); }
+.candidate-rank { position: absolute; right: 10px; top: 10px; color: rgba(109,142,179,.23); font-size: 27px; font-weight: 700; }
+.candidate-heading { display: flex; justify-content: space-between; gap: 12px; padding-right: 22px; }
+.candidate-heading span { color: #ff8d9d; font-size: 7px; }
+.confidence-medium .candidate-heading span { color: #eaba65; }
+.confidence-low .candidate-heading span { color: #75a9d8; }
+.candidate-heading h3 { margin: 5px 0 0; font-size: 11px; }
+.candidate-heading > strong { color: #ff8d9d; font-size: 22px; }
+.candidate-heading > strong small { color: #657c96; font-size: 7px; }
+.candidate-meta { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; margin-top: 12px; }
+.candidate-meta span { padding: 6px; overflow: hidden; color: #7086a0; border-radius: 6px; background: rgba(19,38,60,.58); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.candidate-meta b { color: #adbed0; font-weight: 500; }
+.reason-list { display: grid; gap: 6px; padding: 0; margin: 11px 0 0; list-style: none; }
+.reason-list li { display: grid; grid-template-columns: 29px 1fr; gap: 7px; align-items: start; }
+.reason-list li > b { padding: 3px; color: #7fd9bd; border-radius: 5px; background: rgba(57,152,124,.12); font-size: 7px; text-align: center; }
+.reason-list strong, .reason-list small { display: block; }
+.reason-list strong { font-size: 8px; }
+.reason-list small { margin-top: 2px; color: #6e839d; font-size: 7px; line-height: 1.4; }
+.investigation-columns { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(300px,.65fr); gap: 12px; margin-top: 12px; }
+.evidence-timeline { display: grid; }
+.timeline-item { display: grid; grid-template-columns: 72px 10px 1fr; gap: 8px; min-height: 51px; }
+.timeline-item time { padding-top: 2px; color: #6f86a0; font-size: 7px; font-variant-numeric: tabular-nums; }
+.timeline-item > i { position: relative; width: 7px; height: 7px; margin-top: 2px; border-radius: 50%; background: #5b9fe0; box-shadow: 0 0 7px rgba(77,154,226,.4); }
+.timeline-item > i::after { content: ""; position: absolute; left: 3px; top: 10px; width: 1px; height: 37px; background: rgba(88,132,176,.18); }
+.timeline-item:last-child > i::after { display: none; }
+.timeline-item.error > i { background: var(--red); box-shadow: 0 0 8px rgba(255,110,130,.5); }
+.timeline-item.warn > i { background: var(--amber); }
+.timeline-item div > span { color: #619bd2; font-size: 6px; letter-spacing: .1em; }
+.timeline-item.error div > span { color: #ff8798; }
+.timeline-item strong, .timeline-item small { display: block; }
+.timeline-item strong { margin-top: 2px; font-size: 8px; }
+.timeline-item small { margin-top: 3px; color: #71869e; font-size: 7px; line-height: 1.4; overflow-wrap: anywhere; }
+.fingerprint-list { display: grid; gap: 7px; }
+.fingerprint-list article { padding: 9px; border: 1px solid rgba(110,151,196,.1); border-radius: 8px; background: rgba(17,35,56,.55); }
+.fingerprint-list article > div { display: flex; justify-content: space-between; gap: 8px; }
+.fingerprint-list strong { font-size: 8px; }
+.fingerprint-list span { color: #ff8f9e; font-size: 7px; }
+.fingerprint-list p { margin: 6px 0; color: #9cafc3; font-size: 7px; line-height: 1.45; overflow-wrap: anywhere; }
+.fingerprint-list small { color: #687e98; font-size: 7px; }
+.evidence-disclaimer { margin-top: 11px; padding: 9px; color: #927e58; border: 1px dashed rgba(233,189,109,.18); border-radius: 8px; background: rgba(87,65,30,.12); font-size: 7px; line-height: 1.55; }
+
+.snapshot-list { display: grid; gap: 8px; }
+.snapshot-row { display: grid; grid-template-columns: 170px 1fr auto; align-items: center; gap: 15px; padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: rgba(13,27,45,.84); }
+.snapshot-time strong, .snapshot-time small { display: block; }
+.snapshot-time strong { font-size: 9px; }
+.snapshot-time small { margin-top: 4px; color: #71869f; font-size: 7px; }
+.snapshot-metrics { display: flex; gap: 13px; color: #8da1b8; font-size: 8px; }
+.snapshot-metrics b { color: #d3e1ef; font-weight: 600; }
+.snapshot-actions { display: flex; gap: 6px; }
+
+.toast { position: fixed; z-index: 100; right: 20px; bottom: 20px; max-width: 360px; padding: 11px 13px; transform: translateY(20px); opacity: 0; visibility: hidden; color: #d8e7f6; border: 1px solid rgba(102,169,233,.28); border-radius: 10px; background: #10243a; box-shadow: 0 15px 40px rgba(0,0,0,.35); font-size: 9px; transition: .22s ease; }
+.toast.show { transform: translateY(0); opacity: 1; visibility: visible; }
+.toast.error { border-color: rgba(255,110,130,.35); background: #321a25; }
+.loading { position: fixed; z-index: 120; inset: 0; display: grid; place-content: center; justify-items: center; background: #07101d; transition: opacity .35s ease, visibility .35s ease; }
+.loading.hidden { opacity: 0; visibility: hidden; }
+.loading span { width: 48px; height: 48px; border: 2px solid rgba(87,162,234,.15); border-top-color: #5ba8ff; border-radius: 50%; animation: spin .8s linear infinite; }
+.loading strong { margin-top: 14px; font-size: 12px; }
+.loading small { margin-top: 5px; color: #6f849f; font-size: 8px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 1250px) {
+  .candidate-grid { grid-template-columns: 1fr; }
+  .investigation-columns { grid-template-columns: 1fr; }
+  .metric-grid { grid-template-columns: repeat(3,1fr); }
+  .topbar { grid-template-columns: 218px 1fr auto; }
+  .environment-name { display: none; }
+}
+
+/* 故障定位是日常工作入口，正文在笔记本和投屏上保持可读。 */
+.search-copy p, .source-row strong, .source-row small, .demo-notice, .incident-hero p, .incident-hero .context-warning, .panel-head p, .evidence-disclaimer { font-size: 11px; }
+.candidate-heading h3 { font-size: 14px; }
+.candidate-meta span, .reason-list li > b, .reason-list strong, .reason-list small, .timeline-item time, .timeline-item div > span, .timeline-item strong, .timeline-item small, .fingerprint-list strong, .fingerprint-list span, .fingerprint-list p, .fingerprint-list small { font-size: 11px; }
+.reason-list small, .timeline-item small, .fingerprint-list p { line-height: 1.55; }
+.timeline-item { grid-template-columns: 92px 10px 1fr; min-height: 61px; }
+.timeline-item > i::after { height: 47px; }
+
+@media (max-width: 900px) {
+  html, body { height: auto; min-height: 100%; overflow: auto; }
+  .app-shell { min-height: 100vh; height: auto; grid-template: auto auto 1fr / 1fr; }
+  .topbar { grid-column: 1; grid-template-columns: 1fr; gap: 9px; padding: 10px 14px; }
+  .brand { padding: 0; border-right: 0; }
+  .environment-bar { padding-left: 0; flex-wrap: wrap; }
+  .top-actions { padding-right: 0; flex-wrap: wrap; }
+  .sidebar { padding: 8px 12px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .sidebar nav { min-width: 650px; grid-template-columns: repeat(5,1fr); }
+  .sidebar-note { display: none; }
+  .workspace { overflow: visible; padding: 16px; }
+  .page-header, .incident-hero { align-items: flex-start; flex-direction: column; }
+  .grid-2, .grid-even, .scope-columns { grid-template-columns: 1fr; }
+  .snapshot-row { grid-template-columns: 1fr; }
+  .snapshot-actions, .snapshot-metrics { flex-wrap: wrap; }
+}
+
+@media (max-width: 650px) {
+  .investigation-form { grid-template-columns: 1fr; }
+  .investigation-form .select { width: 100%; }
+  .summary-strip, .quality-row, .metric-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .incident-leading { min-width: 0; width: 100%; }
+  .trace-node { min-width: 460px; margin-left: calc(var(--trace-depth) * 18px); }
+  .top-actions .button { flex: 1; }
+  .change-row { grid-template-columns: 8px minmax(0,1fr) auto; }
+  .change-values { grid-column: 2 / -1; }
+  .severity { grid-column: 3; grid-row: 1; }
+}
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">✦</span><div><strong>星图</strong><small>日志链路故障定位 · V1.6.0 MVP</small></div></div>
+      <div class="environment-bar">
+        <span id="dataModeBadge" class="mode-badge">EM 正在连接</span>
+        <span id="evidenceModeBadge" class="mode-badge">证据源正在连接</span>
+        <span class="environment-name">当前环境</span>
+        <span id="captureTime" class="capture-time">等待同步</span>
+      </div>
+      <div class="top-actions">
+        <button id="syncBtn" class="button secondary">↻ 同步环境</button>
+        <button id="captureBtn" class="button primary">＋ 保存快照</button>
+        <a class="button confidential-link" href="/confidential">◇ 保密现场</a>
+        <a class="button universe-link" href="/universe">✦ 三维星图</a>
+      </div>
+    </header>
+
+    <aside class="sidebar">
+      <nav aria-label="运维工作台导航">
+        <button class="nav-item active" data-view="investigate"><i>⌕</i><span>日志链路</span></button>
+        <button class="nav-item" data-view="overview"><i>⌂</i><span>环境总览</span></button>
+        <button class="nav-item" data-view="changes"><i>⇄</i><span>环境变化</span><b id="changeNavCount"></b></button>
+        <button class="nav-item" data-view="fault"><i>◎</i><span>环境定界</span></button>
+        <button class="nav-item" data-view="snapshots"><i>◫</i><span>历史快照</span><b id="snapshotNavCount"></b></button>
+      </nav>
+      <div class="sidebar-note">
+        <span>EVIDENCE FIRST</span>
+        <strong>只读关联 · 默认脱敏</strong>
+        <p>定位结果是证据排序，不宣称已经确定根因。演示数据不代表真实环境。</p>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <div id="pageHeader" class="page-header"></div>
+      <div id="content" class="content"></div>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="loading" class="loading"><span></span><strong>正在读取环境与证据源</strong><small>同步产品、服务、实例、日志与链路能力</small></div>
+  <script>const els = {
+  content: document.getElementById('content'),
+  pageHeader: document.getElementById('pageHeader'),
+  modeBadge: document.getElementById('dataModeBadge'),
+  evidenceModeBadge: document.getElementById('evidenceModeBadge'),
+  captureTime: document.getElementById('captureTime'),
+  sync: document.getElementById('syncBtn'),
+  capture: document.getElementById('captureBtn'),
+  toast: document.getElementById('toast'),
+  loading: document.getElementById('loading'),
+  snapshotNavCount: document.getElementById('snapshotNavCount'),
+  changeNavCount: document.getElementById('changeNavCount')
+};
+
+const state = {
+  view: 'investigate',
+  snapshot: null,
+  snapshots: [],
+  connectorStatus: null,
+  observability: null,
+  investigation: null,
+  investigationLoading: false,
+  investigationError: '',
+  investigationRequestSerial: 0,
+  investigationQuery: '',
+  investigationWindow: 15,
+  captureLoading: false,
+  diff: null,
+  diffPair: '',
+  changeFilter: 'all',
+  selectedFaultProduct: 'DTBase',
+  selectedFaultService: '',
+  toastTimer: null
+};
+
+const VIEW_META = {
+  investigate: ['日志链路定位', '输入关联标识或错误信息，收拢Trace、日志与EM环境证据。'],
+  overview: ['环境总览', '查看当前产品、服务、实例和脱敏节点事实。'],
+  changes: ['环境变化', '比较两次脱敏快照，识别版本、实例、节点、健康与关系变化。'],
+  fault: ['环境定界', '无Trace时从产品或服务出发，收拢当前实例、上下游、同节点对象与最近变化。'],
+  snapshots: ['历史快照', '所有快照仅保存在本机连接器目录，默认不进入 Git。']
+};
+
+const EVIDENCE_SOURCE_NAMES = { trace: 'Trace', log: '日志', em: 'EM健康', mapping: 'EM映射' };
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>\"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[character]));
+}
+
+function formatTime(value) {
+  if (!value) return '未记录';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value);
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function formatClock(value) {
+  if (!value) return '--:--:--';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value);
+  return date.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+}
+
+function freshHeartTime(value, thresholdMinutes = 15) {
+  const timestamp = value ? new Date(value).getTime() : NaN;
+  const reference = state.snapshot?.capturedAt ? new Date(state.snapshot.capturedAt).getTime() : Date.now();
+  return Number.isFinite(timestamp) && Number.isFinite(reference) && timestamp <= reference + 60 * 1000 && reference - timestamp <= thresholdMinutes * 60 * 1000;
+}
+
+function instanceState(instance) {
+  if (Number(instance.healthState) === 0) return 'unhealthy';
+  if (Number(instance.healthState) === 1) return 'healthy';
+  return 'unknown';
+}
+
+function stateText(value) {
+  return value === 'healthy' ? '健康' : value === 'unhealthy' ? '异常' : '未设置';
+}
+
+function unique(values) {
+  return [...new Set(values.filter(Boolean))].sort();
+}
+
+function objectList(value) {
+  return Array.isArray(value) ? value.filter(item => item && typeof item === 'object') : [];
+}
+
+function primaryEvidenceSource() {
+  return objectList(state.observability?.sources)[0] || null;
+}
+
+async function api(path, options = {}) {
+  const { timeoutMs = 8000, ...requestOptions } = options;
+  const controller = new AbortController();
+  const externalSignal = requestOptions.signal;
+  const abortFromExternal = () => controller.abort();
+  if (externalSignal?.aborted) controller.abort();
+  else externalSignal?.addEventListener('abort', abortFromExternal, { once: true });
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(path, { ...requestOptions, cache: 'no-store', signal: controller.signal, headers: { Accept: 'application/json', ...(requestOptions.headers || {}) } });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error?.message || `请求失败（${response.status}）`);
+    return payload;
+  } catch (error) {
+    if (controller.signal.aborted && !externalSignal?.aborted) throw new Error('请求超时，请检查连接器或缩小查询时间范围。');
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    externalSignal?.removeEventListener('abort', abortFromExternal);
+  }
+}
+
+function showToast(message, error = false) {
+  window.clearTimeout(state.toastTimer);
+  els.toast.textContent = message;
+  els.toast.className = `toast show${error ? ' error' : ''}`;
+  state.toastTimer = window.setTimeout(() => { els.toast.className = 'toast'; }, 3200);
+}
+
+function effectiveProducts(snapshot = state.snapshot) {
+  if (!snapshot) return [];
+  const instances = Array.isArray(snapshot.instances) ? snapshot.instances.filter(Boolean) : [];
+  const products = Array.isArray(snapshot.products) ? snapshot.products.filter(Boolean) : [];
+  const counts = new Map();
+  instances.forEach(instance => {
+    const key = String(instance.productId ?? '');
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  const groups = new Map();
+  products.forEach(product => {
+    if (!groups.has(product.productName)) groups.set(product.productName, []);
+    groups.get(product.productName).push(product);
+  });
+  return [...groups.values()].map(candidates => [...candidates].sort((a, b) => {
+    const instanceDelta = (counts.get(String(b.id)) || 0) - (counts.get(String(a.id)) || 0);
+    if (instanceDelta) return instanceDelta;
+    const currentDelta = Number(Boolean(b.isCurrentVersion)) - Number(Boolean(a.isCurrentVersion));
+    if (currentDelta) return currentDelta;
+    return Number(b.id || 0) - Number(a.id || 0);
+  })[0]).sort((a, b) => a.productName.localeCompare(b.productName));
+}
+
+function services(snapshot = state.snapshot) {
+  if (!snapshot) return [];
+  const map = new Map();
+  const instances = Array.isArray(snapshot.instances) ? snapshot.instances.filter(Boolean) : [];
+  instances.forEach(instance => {
+    const key = `${instance.productName}\u0000${instance.serviceName}`;
+    if (!map.has(key)) map.set(key, { productName: instance.productName, serviceName: instance.serviceName, instances: [] });
+    map.get(key).instances.push(instance);
+  });
+  return [...map.values()].sort((a, b) => a.productName.localeCompare(b.productName) || a.serviceName.localeCompare(b.serviceName));
+}
+
+function healthSummary(instances = objectList(state.snapshot?.instances)) {
+  return objectList(instances).reduce((result, instance) => {
+    result[instanceState(instance)] += 1;
+    return result;
+  }, { healthy: 0, unhealthy: 0, unknown: 0 });
+}
+
+function currentSummary() {
+  const products = effectiveProducts();
+  const serviceList = services();
+  const instances = objectList(state.snapshot?.instances);
+  return {
+    products: products.length,
+    services: serviceList.length,
+    instances: instances.length,
+    hosts: new Set(instances.map(instance => instance.hostLabel).filter(Boolean)).size,
+    health: healthSummary(instances)
+  };
+}
+
+function updateChrome() {
+  const isDemo = state.connectorStatus?.mode === 'demo' || /演示/.test(state.snapshot?.source || '');
+  const snapshotAge = state.snapshot?.capturedAt ? Date.now() - new Date(state.snapshot.capturedAt).getTime() : Infinity;
+  const liveEnvironment = state.connectorStatus?.mode === 'database' && state.snapshot && snapshotAge <= 5 * 60 * 1000;
+  els.modeBadge.textContent = isDemo ? 'EM 脱敏演示' : liveEnvironment ? 'EM 实况' : state.snapshot ? 'EM 缓存/已过期' : 'EM 未连接';
+  els.modeBadge.className = `mode-badge${isDemo ? ' demo' : liveEnvironment ? '' : state.snapshot ? ' unavailable' : ' error'}`;
+  const evidenceSource = primaryEvidenceSource();
+  const evidenceMode = evidenceSource?.mode || 'unavailable';
+  els.evidenceModeBadge.textContent = evidenceMode === 'demo' ? '日志/Trace 演示源' : evidenceMode === 'live' && evidenceSource?.configured ? '日志/Trace 现网源' : evidenceSource?.configured ? `日志/Trace ${evidenceMode}模式` : '日志/Trace 未配置';
+  els.evidenceModeBadge.className = `mode-badge${evidenceMode === 'demo' ? ' demo' : evidenceMode === 'live' && evidenceSource?.configured ? '' : ' unavailable'}`;
+  els.captureTime.textContent = state.snapshot ? `同步于 ${formatTime(state.snapshot.capturedAt)}` : '未连接环境';
+  const captureEnabled = state.connectorStatus?.captureEnabled !== false;
+  els.capture.disabled = state.captureLoading || !captureEnabled;
+  els.capture.title = captureEnabled ? '保存一份当前脱敏环境快照' : '当前部署为只读模式，已禁止保存快照';
+  els.snapshotNavCount.textContent = state.snapshots.length || '';
+  els.changeNavCount.textContent = state.diff?.summary?.total || '';
+}
+
+function renderPageHeader() {
+  const [title, description] = VIEW_META[state.view];
+  els.pageHeader.innerHTML = `<div class="page-title"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p></div><div class="page-actions">${state.view === 'investigate' && state.investigation ? '<button class="button secondary small" id="copyInvestigationBtn">复制摘要</button><button class="button secondary small" id="exportInvestigationBtn">↓ 导出故障定位报告</button>' : ''}${state.view === 'changes' && state.diff ? '<button class="button secondary small" id="exportDiffBtn">↓ 导出差异报告</button>' : ''}</div>`;
+}
+
+function setView(view) {
+  if (!VIEW_META[view]) return;
+  state.view = view;
+  document.querySelectorAll('.nav-item').forEach(button => {
+    const active = button.dataset.view === view;
+    button.classList.toggle('active', active);
+    if (active) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+  render();
+}
+
+function metric(label, value, detail, icon, className = '') {
+  return `<div class="metric ${className}"><div class="metric-head"><span>${escapeHtml(label)}</span><i>${icon}</i></div><strong>${escapeHtml(value)}</strong><small>${escapeHtml(detail)}</small></div>`;
+}
+
+const KIND_NAMES = {
+  'product-added': '产品新增', 'product-removed': '产品减少', 'product-version': '产品版本', 'package-status': '包状态',
+  'service-added': '服务新增', 'service-removed': '服务减少', 'service-version': '服务版本', 'instance-count': '实例数量',
+  'host-changed': '部署节点', lifecycle: '生命周期', health: '健康状态', heart: '心跳上报', 'deploy-status': '部署状态',
+  'relation-added': '关系新增', 'relation-removed': '关系减少'
+};
+
+function changeRow(item) {
+  const severityText = item.severity === 'high' ? '高关注' : item.severity === 'medium' ? '需核查' : '普通变化';
+  return `<div class="change-row ${escapeHtml(item.severity)}" data-product="${escapeHtml(item.productName)}" data-service="${escapeHtml(item.serviceName || '')}">
+    <i></i><div class="change-main"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(KIND_NAMES[item.kind] || item.kind)} · ${escapeHtml(item.detail)}</small></div>
+    <div class="change-values"><b>${escapeHtml(item.before)}</b> → <b>${escapeHtml(item.after)}</b></div><span class="severity ${escapeHtml(item.severity)}">${severityText}</span>
+  </div>`;
+}
+
+function emptyState(icon, title, text, action = '') {
+  return `<div class="empty"><i>${icon}</i><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p>${action}</div>`;
+}
+
+function confidenceText(value) {
+  return value === 'high' ? '高可信' : value === 'medium' ? '中可信' : '低可信';
+}
+
+function renderCandidate(candidate, index) {
+  const context = candidate.context || {};
+  const contextInstances = objectList(context.instances);
+  const hosts = unique(contextInstances.map(instance => instance.hostLabel));
+  const versions = Array.isArray(context.serviceVersions) ? context.serviceVersions : [];
+  const reasons = objectList(candidate.reasons);
+  const impactEvidence = Array.isArray(candidate.impactEvidence) ? candidate.impactEvidence.filter(value => value !== null && value !== undefined) : [];
+  const recommendedChecks = Array.isArray(candidate.recommendedChecks) ? candidate.recommendedChecks.filter(value => value !== null && value !== undefined) : [];
+  const evidenceSources = Array.isArray(candidate.evidenceSources) ? candidate.evidenceSources.map(source => EVIDENCE_SOURCE_NAMES[source] || source) : [];
+  const score = Number.isFinite(Number(candidate.score)) ? Number(candidate.score) : 0;
+  return `<article class="candidate-card confidence-${escapeHtml(candidate.confidence || 'low')}">
+    <div class="candidate-rank">${index + 1}</div>
+    <div class="candidate-heading"><div><span>${escapeHtml(confidenceText(candidate.confidence))}</span><h3>${escapeHtml(candidate.productName || '未映射产品')} / ${escapeHtml(candidate.serviceName || '未映射服务')}</h3></div><strong>${score}<small>/100</small></strong></div>
+    <div class="candidate-meta"><span>产品版本 <b>${escapeHtml(context.productVersion || '未同步')}</b></span><span>服务版本 <b>${escapeHtml(versions.join('、') || '未同步')}</b></span><span>实例 <b>${contextInstances.length}</b></span><span>节点 <b>${escapeHtml(hosts.join('、') || '未映射')}</b></span><span>独立证据 <b>${escapeHtml(evidenceSources.join('、') || '不足')}</b></span></div>
+    <ol class="reason-list">${reasons.map(reason => `<li><b>+${Number(reason.points) || 0}</b><div><strong>${escapeHtml(reason.label)}</strong><small>${escapeHtml(reason.detail)}</small></div></li>`).join('')}</ol>
+    ${impactEvidence.length ? `<div class="impact-evidence"><strong>受影响线索</strong>${impactEvidence.map(detail => `<small>${escapeHtml(detail)}</small>`).join('')}</div>` : ''}
+    ${recommendedChecks.length ? `<div class="recommended-checks"><strong>下一步核验</strong><ul>${recommendedChecks.map(detail => `<li>${escapeHtml(detail)}</li>`).join('')}</ul></div>` : ''}
+  </article>`;
+}
+
+function renderTraceTree(result) {
+  const fallback = objectList(result.spans).map(span => ({ ...span, depth: 0 }));
+  const nodes = objectList(result.traceStructure?.nodes).length ? objectList(result.traceStructure.nodes) : fallback;
+  if (!nodes.length) return emptyState('↯', '没有获取到Trace', '当前只能按日志与时间窗口进行低可信定界。');
+  return `<div class="trace-tree">${nodes.map((span, index) => {
+    const depth = Math.min(8, Math.max(0, Number(span.depth) || 0));
+    const copyButton = span.spanId ? `<button class="inline-copy" type="button" data-copy-value="${escapeHtml(span.spanId)}" data-copy-label="Span ID">复制 Span ID</button>` : '';
+    return `<div class="trace-node ${span.status === 'ERROR' ? 'error' : ''} ${span.slow ? 'slow' : ''}" style="--trace-depth:${depth}"><span class="trace-branch">${depth ? '└' : '●'}</span><span class="trace-order">${index + 1}</span><div><strong>${escapeHtml(span.productName || '未映射产品')} / ${escapeHtml(span.serviceName || '未映射服务')}</strong><small>${escapeHtml(span.operation || '未命名操作')} · ${escapeHtml(formatClock(span.startTime))}</small></div><b>${Number(span.durationMs) || 0} ms</b>${copyButton}</div>`;
+  }).join('')}</div>`;
+}
+
+function renderInvestigation() {
+  const source = primaryEvidenceSource();
+  const presets = objectList(state.observability?.presets);
+  const result = state.investigation;
+  const sourceState = source ? `${source.logs ? '日志' : '无日志'} · ${source.traces ? 'Trace' : '无Trace'}` : '证据源未连接';
+  const disabled = state.investigationLoading || !source?.configured;
+  const sourceClass = source?.mode === 'demo' ? 'demo' : source?.configured ? 'ready' : 'unavailable';
+  const search = `<section class="investigation-search" aria-busy="${state.investigationLoading ? 'true' : 'false'}">
+    <div class="search-copy"><span>TRACE · REQUEST · TASK · JOB</span><h2>从一条线索开始收拢故障证据</h2><p>输入关联ID、服务名称或脱敏错误文本，并限定检索时间。星图给出可核验的疑似点与证据，不直接宣称根因。</p></div>
+    <form id="investigationForm" class="investigation-form"><label class="sr-only" for="investigationQuery">关联标识、服务名或错误内容</label><input id="investigationQuery" class="input" autocomplete="off" maxlength="240" placeholder="输入 Trace ID、Request ID、服务名或错误内容" value="${escapeHtml(state.investigationQuery)}" ${disabled ? 'disabled' : ''}><label class="sr-only" for="investigationWindow">检索时间范围</label><select id="investigationWindow" class="select" ${disabled ? 'disabled' : ''}><option value="15" ${state.investigationWindow === 15 ? 'selected' : ''}>最近 15 分钟</option><option value="60" ${state.investigationWindow === 60 ? 'selected' : ''}>最近 1 小时</option><option value="120" ${state.investigationWindow === 120 ? 'selected' : ''}>最近 2 小时</option></select><button class="button primary" type="submit" ${disabled ? 'disabled' : ''}>${state.investigationLoading ? '正在关联…' : source?.configured ? '开始定位' : '等待配置'}</button></form>
+    ${presets.length ? `<div class="preset-row"><span>演示场景</span>${presets.map(preset => `<button class="filter-pill" type="button" data-investigation-preset="${escapeHtml(preset.id)}" data-investigation-query="${escapeHtml(preset.query)}" ${state.investigationLoading ? 'disabled' : ''}>${escapeHtml(preset.label)}</button>`).join('')}</div>` : ''}
+    <div class="source-row"><span class="source-light ${sourceClass}"></span><strong>${escapeHtml(source?.name || '未配置日志与Trace数据源')}</strong><small>${escapeHtml(source?.notice || sourceState)}</small>${source?.mode === 'demo' ? '<em>内置样例源</em>' : ''}</div>
+  </section>`;
+  if (!result) {
+    const emptyTitle = state.investigationError ? '本次定位没有生成结果' : state.investigationLoading ? '正在查询并关联证据' : '尚未开始故障定位';
+    const emptyText = state.investigationError || (state.investigationLoading ? '正在读取日志、Trace与EM环境上下文，请稍候。' : source?.configured ? '输入关联标识，或选择一个脱敏演示场景。定位结果会展示评分依据和可复制的证据标识。' : source?.notice || '请先配置日志或Trace查询接口。');
+    return `${search}<section class="panel investigation-empty ${state.investigationError ? 'error-state' : ''}">${emptyState(state.investigationError ? '!' : '⌕', emptyTitle, emptyText)}</section>`;
+  }
+
+  const candidates = objectList(result.candidates);
+  const timeline = objectList(result.timeline);
+  const visibleTimeline = timeline.slice(0, 200);
+  const errorGroups = objectList(result.errorGroups);
+  const summary = result.summary || {};
+  const quality = result.quality || {};
+  const scope = result.queryScope || { windowMinutes: state.investigationWindow };
+  const freshness = result.freshness || {};
+  const top = candidates[0];
+  const invalidCount = (Number(summary.invalidLogCount) || 0) + (Number(summary.invalidSpanCount) || 0);
+  const truncatedCount = (Number(summary.truncatedLogCount) || 0) + (Number(summary.truncatedSpanCount) || 0);
+  const traceQuality = quality.traceComplete ? '结构完整' : `${Number(quality.traceRootCount) || 0} 个根 / ${Number(quality.orphanSpanCount) || 0} 个孤儿`;
+  return `${search}
+    ${result.mode === 'demo' ? `<div class="demo-notice"><strong>内置脱敏演示证据</strong><span>${escapeHtml(result.sourceNotice || result.disclaimer)}</span></div>` : ''}
+    <section class="incident-hero"><div><span>INVESTIGATION ${escapeHtml(String(result.id || '').slice(0, 8) || 'UNKNOWN')}</span><h2>${escapeHtml(result.title || '故障证据调查')}</h2><p>${escapeHtml(scope.environmentName || '当前连接器环境')} · Trace ${escapeHtml(result.traceId || '未获取')} · Request ${escapeHtml(result.requestId || '未获取')} · 最近 ${Number(scope.windowMinutes) || 15} 分钟 · ${formatTime(result.createdAt)}</p>${result.environmentContextAvailable === false ? '<small class="context-warning">EM环境上下文暂不可用，本次只按日志与Trace定界，可信度不会引用部署健康证据</small>' : ''}</div><div class="incident-leading"><small>首要疑似点</small><strong>${escapeHtml(top ? `${top.productName} / ${top.serviceName}` : '证据不足')}</strong><span>${top ? `${confidenceText(top.confidence)} · ${Number(top.score) || 0}/100` : '需要补充日志或Trace'}</span></div></section>
+    <div class="summary-strip"><div class="summary-card"><span>Trace Span</span><strong>${Number(summary.spanCount) || 0}</strong></div><div class="summary-card"><span>关联日志</span><strong>${Number(summary.logCount) || 0}</strong></div><div class="summary-card high"><span>错误日志</span><strong>${Number(summary.errorLogCount) || 0}</strong></div><div class="summary-card"><span>候选故障点</span><strong>${Number(summary.candidateCount) || 0}</strong></div></div>
+    <div class="quality-row"><span>证据查询 <b>${Number(freshness.evidenceQueryElapsedMs) || 0} ms</b></span><span>EM映射 <b>${result.environmentContextAvailable === false ? '不可用' : `${Number(quality.mappingRate) || 0}%`}</b></span><span>Trace结构 <b>${escapeHtml(traceQuality)}</b></span><span>丢弃/省略 <b>${invalidCount}/${truncatedCount}</b></span></div>
+    <section class="panel"><div class="panel-head"><div><h2>调用链路树</h2><p>缩进严格依据 parentSpanId；红色表示失败，琥珀色表示数据源判定的慢调用</p></div><span class="mode-badge">${escapeHtml(traceQuality)}</span></div>${renderTraceTree(result)}</section>
+    ${candidates.length ? `<section class="candidate-grid">${candidates.map(renderCandidate).join('')}</section>` : `<section class="panel">${emptyState('?', '没有足够的异常证据', '正常Span不会被强行列入疑似故障点，请补充错误日志或更精确的关联ID。')}</section>`}
+    <section class="investigation-columns">
+      <div class="panel"><div class="panel-head"><div><h2>证据时间线</h2><p>按事件时间排列Span与日志；“最早”仅指当前返回证据</p></div><span>${visibleTimeline.length}/${timeline.length} 条</span></div><div class="evidence-timeline">${visibleTimeline.map(item => { const evidenceId = item.spanId || item.requestId || item.traceId || ''; return `<article class="timeline-item ${item.severity === 'ERROR' || item.severity === 'FATAL' ? 'error' : item.severity === 'WARN' ? 'warn' : ''}"><time>${escapeHtml(formatClock(item.timestamp))}</time><i></i><div><span>${escapeHtml(item.type === 'span' ? 'SPAN' : item.severity || 'LOG')}</span><strong>${escapeHtml(item.productName || '未映射产品')} / ${escapeHtml(item.serviceName || '未映射服务')} · ${escapeHtml(item.title || '未命名证据')}</strong><small>${escapeHtml(item.detail || '')}${evidenceId ? ` <button class="inline-copy" type="button" data-copy-value="${escapeHtml(evidenceId)}" data-copy-label="证据ID">复制证据ID</button>` : ''}</small></div></article>`; }).join('') || '<p>没有可展示的时间线证据</p>'}</div></div>
+      <div class="panel"><div class="panel-head"><div><h2>错误指纹</h2><p>动态ID和数值已归一化，可复制样例回原平台核验</p></div></div><div class="fingerprint-list">${errorGroups.map(group => `<article><div><strong>${escapeHtml(group.productName || '未映射产品')} / ${escapeHtml(group.serviceName || '未映射服务')}</strong><span>${Number(group.count) || 0} 次</span></div><p>${escapeHtml(group.sample || '')}</p><small>${escapeHtml(formatClock(group.firstAt))} → ${escapeHtml(formatClock(group.lastAt))} <button class="inline-copy" type="button" data-copy-value="${escapeHtml(group.sample || '')}" data-copy-label="错误样例">复制样例</button></small></article>`).join('') || '<p>没有可归并的错误日志</p>'}</div><div class="evidence-disclaimer">${escapeHtml(result.disclaimer || '定位结果为证据排序，不代表已确定根因。')}</div></div>
+    </section>`;
+}
+
+function renderOverview() {
+  if (!state.snapshot) return emptyState('!', '尚未连接 EM', '请启动本地连接器，并检查只读账号配置。');
+  const summary = currentSummary();
+  const latestChanges = state.diff?.changes || [];
+  const highChanges = latestChanges.filter(item => item.severity === 'high');
+  const statusClass = summary.health.unhealthy ? 'error' : highChanges.length ? 'warning' : '';
+  const statusTitle = summary.health.unhealthy ? `${summary.health.unhealthy} 个异常实例` : highChanges.length ? `${highChanges.length} 项高关注变化` : '当前未发现高关注信号';
+  const statusDetail = summary.health.unhealthy ? '建议先进入日志链路或环境定界' : state.diff ? '依据最近两次本地快照' : '保存至少两次快照后可识别变化';
+  const totalHealth = Math.max(1, summary.instances);
+  return `
+    <section class="hero"><div><span class="hero-kicker">ENVIRONMENT CONTEXT</span><h2>环境事实为日志与Trace补充部署上下文</h2><p>这里展示当前 EM 产品、服务、实例和节点事实。故障定位时，星图会把这些信息与日志和调用链关联。</p></div><div class="hero-status"><i class="${statusClass}"></i><div><strong>${escapeHtml(statusTitle)}</strong><small>${escapeHtml(statusDetail)}</small></div></div></section>
+    <section class="metric-grid">
+      ${metric('当前产品', summary.products, '按当前实例与版本去重', '◉')}
+      ${metric('当前服务', summary.services, '来自当前实例清单', '◇')}
+      ${metric('当前实例', summary.instances, `${summary.hosts} 个脱敏节点`, '▦')}
+      ${metric('健康实例', summary.health.healthy, '健康度与生命周期分开判断', '●', 'good')}
+      ${metric('异常实例', summary.health.unhealthy, summary.health.unknown ? `${summary.health.unknown} 个状态未设置` : '没有未设置状态', '!', summary.health.unhealthy ? 'alert' : '')}
+    </section>
+    <section class="grid-2">
+      <div class="panel"><div class="panel-head"><div><h2>最近环境变化</h2><p>${state.diff ? `${formatTime(state.diff.from.capturedAt)} → ${formatTime(state.diff.to.capturedAt)}` : '尚无可比较的快照'}</p></div><button class="text-button" data-go="changes">查看全部变化 ›</button></div>
+        <div class="change-list">${latestChanges.length ? latestChanges.slice(0, 6).map(changeRow).join('') : emptyState('⇄', '暂无业务变化', state.snapshots.length >= 2 ? '最近两次快照未识别到产品、服务、实例、节点、状态或关系变化。' : '保存至少两次快照后，星图会自动比较环境变化。', `<button class="button primary small" data-capture="true" ${state.captureLoading ? 'disabled' : ''}>${state.captureLoading ? '正在保存…' : '保存当前快照'}</button>`)}</div>
+      </div>
+      <div class="panel"><div class="panel-head"><div><h2>当前实例健康</h2><p>不把“运行中”和“健康”混为同一状态</p></div></div>
+        <div class="health-bars">
+          <div class="health-bar"><label><span>健康</span><strong>${summary.health.healthy}</strong></label><div class="health-track"><i style="width:${summary.health.healthy / totalHealth * 100}%"></i></div></div>
+          <div class="health-bar unhealthy"><label><span>异常</span><strong>${summary.health.unhealthy}</strong></label><div class="health-track"><i style="width:${summary.health.unhealthy / totalHealth * 100}%"></i></div></div>
+          <div class="health-bar unknown"><label><span>未设置 / 等待</span><strong>${summary.health.unknown}</strong></label><div class="health-track"><i style="width:${summary.health.unknown / totalHealth * 100}%"></i></div></div>
+        </div>
+        <div class="quick-actions"><button class="quick-action" data-go="investigate"><strong>日志链路定位</strong><small>从关联ID收拢故障证据</small></button><button class="quick-action" data-go="fault"><strong>环境定界</strong><small>无Trace时按服务收拢范围</small></button><button class="quick-action" data-go="snapshots"><strong>保存记录</strong><small>${state.snapshots.length} 份本地脱敏快照</small></button><a class="quick-action" href="/universe"><strong>关系宇宙</strong><small>进入三维全局视图</small></a></div>
+      </div>
+    </section>`;
+}
+
+function snapshotOptions(selectedId) {
+  return state.snapshots.map(snapshot => `<option value="${escapeHtml(snapshot.id)}" ${snapshot.id === selectedId ? 'selected' : ''}>${escapeHtml(formatTime(snapshot.capturedAt))} · ${snapshot.productCount} 产品${snapshot.demo ? ' · 演示' : ''}</option>`).join('');
+}
+
+function defaultPair() {
+  if (state.snapshots.length < 2) return { from: '', to: '' };
+  return { from: state.snapshots[1].id, to: state.snapshots[0].id };
+}
+
+function filteredChanges() {
+  const changes = state.diff?.changes || [];
+  if (state.changeFilter === 'all') return changes;
+  if (state.changeFilter === 'high') return changes.filter(item => item.severity === 'high');
+  if (state.changeFilter === 'version') return changes.filter(item => /version/.test(item.kind));
+  if (state.changeFilter === 'instance') return changes.filter(item => ['instance-count', 'service-added', 'service-removed', 'host-changed', 'health', 'lifecycle', 'heart'].includes(item.kind));
+  return changes;
+}
+
+function renderChanges() {
+  if (state.snapshots.length < 2) return `<div class="toolbar"><span>历史快照不足</span><span class="spacer"></span><button class="button primary small" data-capture="true" ${state.captureLoading ? 'disabled' : ''}>${state.captureLoading ? '正在保存…' : '保存当前快照'}</button></div>${emptyState('⇄', '至少需要两份快照', '保存两次不同时刻的环境快照后，才能比较实际环境变化。')}`;
+  const pair = state.diffPair ? Object.fromEntries(state.diffPair.split('|').map((value, index) => [index ? 'to' : 'from', value])) : defaultPair();
+  const diff = state.diff;
+  const changes = filteredChanges();
+  return `
+    <div class="toolbar"><label>基线快照</label><select class="select" id="fromSnapshot">${snapshotOptions(pair.from)}</select><label>对比快照</label><select class="select" id="toSnapshot">${snapshotOptions(pair.to)}</select><button class="button primary small" id="compareBtn">开始比较</button><span class="spacer"></span><div class="filter-pills"><button class="filter-pill ${state.changeFilter === 'all' ? 'active' : ''}" data-filter="all">全部</button><button class="filter-pill ${state.changeFilter === 'high' ? 'active' : ''}" data-filter="high">高关注</button><button class="filter-pill ${state.changeFilter === 'version' ? 'active' : ''}" data-filter="version">版本</button><button class="filter-pill ${state.changeFilter === 'instance' ? 'active' : ''}" data-filter="instance">实例与状态</button></div></div>
+    ${diff ? `<div class="summary-strip"><div class="summary-card"><span>识别变化</span><strong>${diff.summary.total}</strong></div><div class="summary-card high"><span>高关注</span><strong>${diff.summary.high}</strong></div><div class="summary-card"><span>需核查</span><strong>${diff.summary.medium}</strong></div><div class="summary-card"><span>涉及产品</span><strong>${diff.summary.products}</strong></div></div><div class="panel"><div class="panel-head"><div><h2>变化明细</h2><p>点击变化项可进入对应产品和服务的环境定界</p></div><span>${changes.length} 项</span></div><div class="change-list">${changes.length ? changes.map(changeRow).join('') : emptyState('✓', '当前筛选下没有变化', '可以切换其他变化类型查看。')}</div></div>` : emptyState('⇄', '请选择两个快照', '选择基线与对比快照后开始比较。')}`;
+}
+
+function productInstances(productName) {
+  return objectList(state.snapshot?.instances).filter(instance => instance.productName === productName);
+}
+
+function productSelect(selected, id) {
+  return `<select class="select" id="${id}">${effectiveProducts().map(product => `<option value="${escapeHtml(product.productName)}" ${product.productName === selected ? 'selected' : ''}>${escapeHtml(product.displayName || product.productName)} · ${escapeHtml(product.version || '版本待同步')}</option>`).join('')}</select>`;
+}
+
+function instanceTable(instances) {
+  const rows = objectList(instances);
+  if (!rows.length) return emptyState('◇', '没有当前实例', '产品清单存在，但当前实例表未返回对应服务。');
+  return `<div class="table-scroll"><table class="instance-table"><thead><tr><th>服务</th><th>版本</th><th>节点</th><th>生命周期</th><th>健康</th><th>心跳</th></tr></thead><tbody>${rows.map(instance => {
+    const status = instanceState(instance);
+    const heartText = freshHeartTime(instance.heartTime) ? formatTime(instance.heartTime) : instance.heartTime ? `${formatTime(instance.heartTime)}（超过15分钟）` : '未上报';
+    return `<tr><td>${escapeHtml(instance.serviceDisplayName || instance.serviceName)}</td><td>${escapeHtml(instance.serviceVersion || '未上报')}</td><td>${escapeHtml(instance.hostLabel || '未知节点')}</td><td>${escapeHtml(instance.lifecycleStatus || '未上报')}</td><td><span class="state-dot ${status}"></span>${stateText(status)}</td><td>${escapeHtml(heartText)}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+function faultSelection() {
+  const products = effectiveProducts().map(product => product.productName);
+  if (!products.includes(state.selectedFaultProduct)) state.selectedFaultProduct = products.includes('DTBase') ? 'DTBase' : products[0] || '';
+  const productServices = unique(productInstances(state.selectedFaultProduct).map(instance => instance.serviceName));
+  if (!productServices.includes(state.selectedFaultService)) state.selectedFaultService = productServices[0] || '';
+  return { product: state.selectedFaultProduct, service: state.selectedFaultService, services: productServices };
+}
+
+function renderFault() {
+  if (!state.snapshot) return emptyState('!', '没有当前环境数据', '请先同步 EM 实况。');
+  const selection = faultSelection();
+  const instances = productInstances(selection.product).filter(instance => !selection.service || instance.serviceName === selection.service);
+  const relations = objectList(state.snapshot.relations);
+  const dependencyRelations = relations.filter(relation => relation.type !== 'conflict');
+  const outbound = dependencyRelations.filter(relation => relation.sourceProduct === selection.product && (!selection.service || relation.sourceService === selection.service));
+  const inbound = dependencyRelations.filter(relation => relation.targetProduct === selection.product && (!selection.service || relation.targetService === selection.service));
+  const conflicts = relations.filter(relation => relation.type === 'conflict' && ((relation.sourceProduct === selection.product && (!selection.service || relation.sourceService === selection.service)) || (relation.targetProduct === selection.product && (!selection.service || relation.targetService === selection.service))));
+  const knownProducts = new Set(effectiveProducts().map(product => product.productName));
+  const hosts = new Set(instances.map(instance => instance.hostLabel).filter(Boolean));
+  const colocated = hosts.size ? objectList(state.snapshot.instances).filter(instance => instance.hostLabel && hosts.has(instance.hostLabel) && !(instance.productName === selection.product && instance.serviceName === selection.service)) : [];
+  const recentChanges = (state.diff?.changes || []).filter(item => item.productName === selection.product && (!selection.service || !item.serviceName || item.serviceName === selection.service));
+  const recommendations = [];
+  if (instances.some(instance => instanceState(instance) === 'unhealthy')) recommendations.push('EM健康度存在异常，先核对实例探针与服务可用性。');
+  if (instances.some(instance => /fail|error|stop/i.test(instance.lifecycleStatus || ''))) recommendations.push('生命周期存在失败或停止状态，独立核对进程与部署记录。');
+  if (instances.some(instance => !freshHeartTime(instance.heartTime))) recommendations.push('存在未上报或超过15分钟的心跳（MVP阈值），优先核对实际上报周期与 Agent 连通性。');
+  if (outbound.length) recommendations.push('先检查直接上游依赖，再检查本服务自身。');
+  if (recentChanges.length) recommendations.push('该对象出现在最近环境变化中，优先核对变更前后差异。');
+  if (!recommendations.length) recommendations.push('当前事实中未发现明确异常信号，可结合巡检、日志和 RAG 继续补充证据。');
+  return `
+    <div class="toolbar"><label>产品</label>${productSelect(selection.product, 'faultProduct')}<label>服务</label><select class="select" id="faultService">${selection.services.map(service => `<option value="${escapeHtml(service)}" ${service === selection.service ? 'selected' : ''}>${escapeHtml(service)}</option>`).join('')}</select><span class="spacer"></span><span class="mode-badge">定界，不宣称根因</span></div>
+    <div class="summary-strip"><div class="summary-card"><span>当前实例</span><strong>${instances.length}</strong></div><div class="summary-card high"><span>异常实例</span><strong>${instances.filter(instance => instanceState(instance) === 'unhealthy').length}</strong></div><div class="summary-card"><span>直接上游</span><strong>${outbound.length}</strong></div><div class="summary-card"><span>直接下游</span><strong>${inbound.length}</strong></div></div>
+    <section class="panel flush"><div class="panel-head" style="padding:14px 14px 0"><div><h2>${escapeHtml(selection.product)} / ${escapeHtml(selection.service || '全部服务')}</h2><p>当前部署事实</p></div></div>${instanceTable(instances)}</section>
+    <div class="scope-columns"><section class="scope-card"><h3>建议排查顺序</h3><ul>${recommendations.map((item, index) => `<li><strong>${index + 1}.</strong> ${escapeHtml(item)}</li>`).join('')}</ul></section><section class="scope-card"><h3>直接上下游</h3><ul>${[...outbound.map(relation => `依赖 → ${relation.targetProduct} / ${relation.targetService}${knownProducts.has(relation.targetProduct) ? '' : '（未映射当前产品）'}`), ...inbound.map(relation => `被依赖 ← ${relation.sourceProduct} / ${relation.sourceService}${knownProducts.has(relation.sourceProduct) ? '' : '（未映射当前产品）'}`), ...conflicts.map(relation => `冲突 ⚠ ${relation.sourceProduct}/${relation.sourceService} ↔ ${relation.targetProduct}/${relation.targetService}`)].map(item => `<li>${escapeHtml(item)}</li>`).join('') || '<li>当前关系表未发现直接关系</li>'}</ul></section><section class="scope-card"><h3>同节点关联</h3><ul>${hosts.size ? colocated.slice(0, 12).map(instance => `<li><strong>${escapeHtml(instance.hostLabel)}</strong> · ${escapeHtml(instance.productName)} / ${escapeHtml(instance.serviceName)}</li>`).join('') || '<li>未发现其他同节点实例</li>' : '<li>目标实例缺少节点标识，无法进行同节点分析</li>'}</ul></section></div>
+    <section class="panel" style="margin-top:12px"><div class="panel-head"><div><h2>最近变化证据</h2><p>来自最近两次本地快照，不等同于根因</p></div></div><div class="change-list">${recentChanges.length ? recentChanges.map(changeRow).join('') : emptyState('✓', '最近快照中没有相关变化', '仍需结合自动巡检、日志和现场信息继续判断。')}</div></section>`;
+}
+
+function renderSnapshots() {
+  const captureEnabled = state.connectorStatus?.captureEnabled !== false;
+  if (!state.snapshots.length) return emptyState('◫', '还没有历史快照', captureEnabled ? '点击顶部“保存快照”，建立环境变化基线。' : '当前部署为只读模式，请联系管理员开启快照保存。', captureEnabled ? `<button class="button primary small" data-capture="true" ${state.captureLoading ? 'disabled' : ''}>${state.captureLoading ? '正在保存…' : '保存当前快照'}</button>` : '');
+  const latestId = state.snapshots[0]?.id;
+  return `<div class="toolbar"><span>共 ${state.snapshots.length} 份本地脱敏快照${captureEnabled ? '' : ' · 当前只读'}</span><span class="spacer"></span>${captureEnabled ? `<button class="button primary small" data-capture="true" ${state.captureLoading ? 'disabled' : ''}>${state.captureLoading ? '正在保存…' : '＋ 保存当前快照'}</button>` : ''}</div><div class="snapshot-list">${state.snapshots.map((snapshot, index) => `<div class="snapshot-row"><div class="snapshot-time"><strong>${escapeHtml(formatTime(snapshot.capturedAt))}</strong><small>${escapeHtml(snapshot.source)}${snapshot.demo ? ' · 演示数据' : ''}</small></div><div class="snapshot-metrics"><span><b>${snapshot.productCount}</b> 产品</span><span><b>${snapshot.serviceCount}</b> 服务</span><span><b>${snapshot.instanceCount}</b> 实例</span><span><b>${snapshot.hostCount}</b> 节点</span></div><div class="snapshot-actions">${snapshot.id !== latestId ? `<button class="button secondary small" data-compare-from="${escapeHtml(snapshot.id)}" data-compare-to="${escapeHtml(latestId)}">与最新比较</button>` : '<span class="mode-badge">最新</span>'}${index === 1 ? '<span class="mode-badge">上次快照</span>' : ''}</div></div>`).join('')}</div>`;
+}
+
+function render() {
+  renderPageHeader();
+  updateChrome();
+  if (state.view === 'investigate') els.content.innerHTML = renderInvestigation();
+  if (state.view === 'overview') els.content.innerHTML = renderOverview();
+  if (state.view === 'changes') els.content.innerHTML = renderChanges();
+  if (state.view === 'fault') els.content.innerHTML = renderFault();
+  if (state.view === 'snapshots') els.content.innerHTML = renderSnapshots();
+  bindViewEvents();
+}
+
+async function runInvestigation(query, scenario = '', windowMinutes = state.investigationWindow) {
+  if (!primaryEvidenceSource()?.configured) return showToast('尚未配置日志或Trace证据源。', true);
+  const trimmed = String(query || '').trim();
+  if (!trimmed && !scenario) return showToast('请输入关联标识、服务名或错误内容。', true);
+  const requestSerial = ++state.investigationRequestSerial;
+  state.investigationQuery = trimmed;
+  state.investigationWindow = [15, 60, 120].includes(Number(windowMinutes)) ? Number(windowMinutes) : 15;
+  state.investigationLoading = true;
+  state.investigationError = '';
+  state.investigation = null;
+  render();
+  try {
+    const result = await api('/api/investigations', {
+      method: 'POST',
+      timeoutMs: 15000,
+      headers: { 'Content-Type': 'application/json', 'X-Xingtu-Action': 'investigate' },
+      body: JSON.stringify({ query: trimmed, scenario, windowMinutes: state.investigationWindow })
+    });
+    if (requestSerial !== state.investigationRequestSerial) return;
+    state.investigation = result;
+    showToast(`已生成 ${(result.candidates || []).length} 个疑似点，结果不代表根因。`);
+  } catch (error) {
+    if (requestSerial !== state.investigationRequestSerial) return;
+    state.investigationError = error.message;
+    showToast(error.message, true);
+  } finally {
+    if (requestSerial !== state.investigationRequestSerial) return;
+    state.investigationLoading = false;
+    render();
+  }
+}
+
+async function compareSnapshots(from, to, switchView = false) {
+  if (!from || !to) return showToast('请选择两个快照。', true);
+  if (from === to) return showToast('基线快照和对比快照不能相同。', true);
+  try {
+    const diff = await api(`/api/snapshots/diff?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    state.diff = diff;
+    state.diffPair = `${from}|${to}`;
+    if (switchView) state.view = 'changes';
+    document.querySelectorAll('.nav-item').forEach(button => button.classList.toggle('active', button.dataset.view === state.view));
+    render();
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+async function loadLatestDiff() {
+  if (state.snapshots.length < 2) {
+    state.diff = null;
+    state.diffPair = '';
+    return;
+  }
+  const pair = defaultPair();
+  await compareSnapshots(pair.from, pair.to, false);
+}
+
+async function captureSnapshot() {
+  if (state.connectorStatus?.captureEnabled === false) return showToast('当前部署为只读模式，不能保存快照。', true);
+  if (state.captureLoading) return;
+  state.captureLoading = true;
+  render();
+  let result;
+  try {
+    result = await api('/api/snapshots/capture', { method: 'POST', headers: { 'X-Xingtu-Action': 'capture' } });
+    showToast(`${result.deduplicated ? '已复用刚保存的快照' : '已保存脱敏快照'}：${formatTime(result.snapshot?.capturedAt)}`);
+  } catch (error) {
+    state.captureLoading = false;
+    render();
+    return showToast(error.message, true);
+  }
+  try {
+    const snapshotList = await api('/api/snapshots');
+    state.snapshots = objectList(snapshotList.snapshots);
+    await loadLatestDiff();
+  } catch (error) {
+    showToast(`快照已保存，但列表刷新失败：${error.message}`, true);
+  } finally {
+    state.captureLoading = false;
+    render();
+  }
+}
+
+async function syncCurrent() {
+  els.sync.disabled = true;
+  try {
+    const [snapshot, status] = await Promise.all([api('/api/live/snapshot'), api('/api/live/status')]);
+    state.snapshot = snapshot;
+    state.connectorStatus = status;
+    render();
+    showToast('当前环境已重新同步。');
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    els.sync.disabled = false;
+  }
+}
+
+function markdownDiff() {
+  if (!state.diff) return '';
+  const lines = ['# 星图环境差异报告', '', `- 基线：${formatTime(state.diff.from.capturedAt)}`, `- 对比：${formatTime(state.diff.to.capturedAt)}`, `- 变化：${state.diff.summary.total} 项`, `- 高关注：${state.diff.summary.high} 项`, '', '## 变化明细', ''];
+  state.diff.changes.forEach(item => lines.push(`- [${item.severity === 'high' ? '高关注' : '需核查'}] ${item.title}：${item.before} → ${item.after}。${item.detail}`));
+  lines.push('', '> 本报告仅包含本地脱敏快照事实，不包含真实 IP、数据库凭据和原始错误全文。');
+  return lines.join('\n');
+}
+
+function downloadText(filename, content) {
+  if (!content) return;
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function copyText(content, successMessage = '故障定位摘要已复制。') {
+  if (!content) return;
+  try {
+    await navigator.clipboard.writeText(content);
+    showToast(successMessage);
+  } catch {
+    const input = document.createElement('textarea');
+    input.value = content;
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.append(input);
+    input.select();
+    const copied = document.execCommand('copy');
+    input.remove();
+    showToast(copied ? successMessage : '浏览器不允许自动复制，请使用导出报告。', !copied);
+  }
+}
+
+function bindViewEvents() {
+  els.content.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => setView(button.dataset.go)));
+  document.getElementById('investigationForm')?.addEventListener('submit', event => {
+    event.preventDefault();
+    runInvestigation(document.getElementById('investigationQuery')?.value || '', '', Number(document.getElementById('investigationWindow')?.value || 15));
+  });
+  els.content.querySelectorAll('[data-investigation-preset]').forEach(button => button.addEventListener('click', () => {
+    state.investigationQuery = button.dataset.investigationQuery || '';
+    runInvestigation(state.investigationQuery, button.dataset.investigationPreset || '', Number(document.getElementById('investigationWindow')?.value || state.investigationWindow));
+  }));
+  els.content.querySelectorAll('[data-copy-value]').forEach(button => button.addEventListener('click', () => copyText(button.dataset.copyValue || '', `${button.dataset.copyLabel || '内容'}已复制。`)));
+  els.content.querySelectorAll('[data-capture]').forEach(button => button.addEventListener('click', captureSnapshot));
+  els.content.querySelectorAll('.change-row[data-product]').forEach(row => row.addEventListener('click', () => {
+    if (row.dataset.product) state.selectedFaultProduct = row.dataset.product;
+    state.selectedFaultService = row.dataset.service || '';
+    setView('fault');
+  }));
+  els.content.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { state.changeFilter = button.dataset.filter; render(); }));
+  document.getElementById('compareBtn')?.addEventListener('click', () => compareSnapshots(document.getElementById('fromSnapshot').value, document.getElementById('toSnapshot').value));
+  document.getElementById('faultProduct')?.addEventListener('change', event => { state.selectedFaultProduct = event.target.value; state.selectedFaultService = ''; render(); });
+  document.getElementById('faultService')?.addEventListener('change', event => { state.selectedFaultService = event.target.value; render(); });
+  els.content.querySelectorAll('[data-compare-from]').forEach(button => button.addEventListener('click', () => compareSnapshots(button.dataset.compareFrom, button.dataset.compareTo, true)));
+  document.getElementById('exportDiffBtn')?.addEventListener('click', () => downloadText(`星图-环境差异-${new Date().toISOString().slice(0, 10)}.md`, markdownDiff()));
+  document.getElementById('exportInvestigationBtn')?.addEventListener('click', () => downloadText(`星图-故障定位${state.investigation?.mode === 'demo' ? '-演示' : ''}-${new Date().toISOString().slice(0, 10)}.md`, state.investigation?.reportMarkdown || ''));
+  document.getElementById('copyInvestigationBtn')?.addEventListener('click', () => copyText(state.investigation?.reportMarkdown || ''));
+}
+
+document.querySelectorAll('.nav-item').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
+els.sync.addEventListener('click', syncCurrent);
+els.capture.addEventListener('click', captureSnapshot);
+
+async function initialize() {
+  try {
+    const [snapshotResult, statusResult, snapshotListResult, observabilityResult] = await Promise.allSettled([api('/api/live/snapshot'), api('/api/live/status'), api('/api/snapshots'), api('/api/observability/sources')]);
+    if (snapshotResult.status === 'fulfilled') state.snapshot = snapshotResult.value;
+    if (statusResult.status === 'fulfilled') state.connectorStatus = statusResult.value;
+    if (snapshotListResult.status === 'fulfilled') state.snapshots = objectList(snapshotListResult.value.snapshots);
+    if (observabilityResult.status === 'fulfilled') state.observability = observabilityResult.value;
+    const failures = [snapshotResult, statusResult, snapshotListResult, observabilityResult].filter(result => result.status === 'rejected');
+    if (failures.length) showToast(`${failures.length} 项数据源暂不可用，其余功能仍可使用。`, true);
+    if (state.snapshots.length >= 2) {
+      const pair = defaultPair();
+      state.diff = await api(`/api/snapshots/diff?from=${encodeURIComponent(pair.from)}&to=${encodeURIComponent(pair.to)}`);
+      state.diffPair = `${pair.from}|${pair.to}`;
+    }
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    render();
+    window.setTimeout(() => els.loading.classList.add('hidden'), 250);
+    const parameters = new URLSearchParams(window.location.search);
+    const deepLinkQuery = parameters.get('trace') || parameters.get('request') || parameters.get('query') || '';
+    const deepLinkScenario = parameters.get('scenario') || '';
+    const deepLinkWindow = Number(parameters.get('window') || 15);
+    if ((deepLinkQuery || deepLinkScenario) && primaryEvidenceSource()?.configured) window.setTimeout(() => runInvestigation(deepLinkQuery, deepLinkScenario, deepLinkWindow), 320);
+  }
+}
+
+initialize();
+
+window.XINGTU_OPERATIONS = { get state() { return state; }, setView, syncCurrent, captureSnapshot, compareSnapshots, runInvestigation };
+</script>
+</body>
+</html>

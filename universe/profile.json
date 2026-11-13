@@ -1,0 +1,401 @@
+{
+  "schemaVersion": 2,
+  "profileId": "verified-16node-20261014",
+  "profileName": "16 节点云化 K8s 多模态实测 Profile",
+  "baseline": "数栈 7.0 · EM-on-K8s",
+  "updatedAt": "2026-10-23",
+  "profileNote": "SOP 31 步仅作母清单；包、顶层 chart、子 chart、镜像和安装步骤分别计数。内部 4 节点资料只用于形态 fixture，不与本 Profile 合并。",
+  "layers": [
+    { "id": "infra", "name": "集群基础", "color": "#6ce5ff" },
+    { "id": "storage", "name": "存储与中间件", "color": "#65f5ad" },
+    { "id": "common", "name": "平台公共层", "color": "#88a8ff" },
+    { "id": "plugin", "name": "插件层", "color": "#d5a4ff" },
+    { "id": "engine", "name": "引擎与计算", "color": "#ffb86b" },
+    { "id": "gateway", "name": "注册与网关", "color": "#ff7f9f" },
+    { "id": "app", "name": "业务服务", "color": "#ffe074" },
+    { "id": "portal", "name": "门户入口", "color": "#ffffff" }
+  ],
+  "sources": [
+    { "id": "SRC-BRIEF-1022", "title": "星图K8s改造_给GPT的开场简报.md", "sections": ["§5", "§6", "§7", "§8", "§9"] },
+    { "id": "SRC-ORDER-1014", "title": "示例站点-完整部署顺序与经验-20261014.md", "sections": ["§二", "§四", "§六"] },
+    { "id": "SRC-REPLAY-0923", "title": "数栈7.0云化K8s_部署与冒烟问题汇总与复盘_20260923.md", "sections": ["D-01～D-20", "S-01～S-43"] },
+    { "id": "SRC-DUTY-0915", "title": "数栈7.0云化K8s_组件职责与依赖关系_20260915.md", "sections": ["§1～§8"] },
+    { "id": "SRC-DEPLOYDOC-0903", "title": "数栈7.0云化K8s多模态环境部署文档_20260903.md", "sections": ["Phase 3～6", "附录"] },
+    { "id": "SRC-FIELDPLAN-0914", "title": "数栈7.0云化K8s_现场部署方案_20260914.md", "sections": ["§1.3", "§4.4", "§8.2", "§12"] },
+    { "id": "SRC-MATERIAL-0915", "title": "数栈7.0云化K8s_物料下载urls_20260915.txt", "sections": ["全文件"] },
+    { "id": "SRC-MULTIMODAL-0915", "title": "数栈多模态AI算子调用与模块交互_20260915.md", "sections": ["§1", "§2", "§3", "§4", "§8", "§9"] },
+    { "id": "SRC-LEDGER-CURRENT", "title": "现场变更记录台账_示例站点.md", "sections": ["C-03", "C-20", "C-33", "C-34", "C-36", "C-39", "C-43", "观察-07", "观察-56"] }
+  ],
+  "components": [
+    {
+      "id": "ingress-nginx", "name": "ingress-nginx", "layer": "infra", "chartNames": ["ingress-nginx"], "pkgNames": ["ingress-nginx"],
+      "responsibility": "集群入口与 HTTP/HTTPS 流量转发。", "dependsOn": [], "deployOrder": 0, "artifactType": "sealos-bundled", "providedBy": "sealos-installer", "scope": "required",
+      "placement": { "kind": "daemonset", "key": "worker", "value": "all", "stickyData": false, "note": "随 Sealos 安装，产品阶段只核验，不重复部署。" },
+      "serviceNames": ["ingress-nginx"], "ports": [80, 443], "configKeys": [], "imageRepos": [], "failureModes": ["门户不可达", "入口 404/502"],
+      "sources": [{ "id": "SRC-DEPLOYDOC-0903", "section": "Phase 3" }, { "id": "SRC-BRIEF-1022", "section": "§6" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "reloader", "name": "reloader", "layer": "infra", "chartNames": ["reloader"], "pkgNames": ["reloader"],
+      "responsibility": "监听配置变化并触发受控工作负载重载。", "dependsOn": [], "deployOrder": 0, "artifactType": "sealos-bundled", "providedBy": "sealos-installer", "scope": "required",
+      "placement": { "kind": "cluster-addon", "key": "", "value": "", "stickyData": false, "note": "随 Sealos 安装，只核验运行状态。" },
+      "serviceNames": ["reloader"], "ports": [], "configKeys": [], "imageRepos": [], "failureModes": ["配置变化未触发重载", "重复部署造成对象冲突"],
+      "sources": [{ "id": "SRC-DEPLOYDOC-0903", "section": "Phase 3" }, { "id": "SRC-BRIEF-1022", "section": "§6" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "dtstack-common", "name": "DTCommon", "layer": "common", "chartNames": ["dtstack-common"], "pkgNames": ["DTCommon"],
+      "responsibility": "提供公共模板、全局配置和共享资源。", "dependsOn": [], "deployOrder": 1, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "必须先于其他产品 chart。" },
+      "serviceNames": [], "ports": [], "configKeys": ["global.hostPathRoot", "global.plugin.jobCount", "global.feature.*"], "imageRepos": [], "failureModes": ["全局键缺失", "后续 chart 渲染失败"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-ORDER-1014", "section": "§二-基础服务" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "zookeeper", "name": "ZooKeeper", "layer": "storage", "chartNames": ["zookeeper"], "pkgNames": ["zookeeper"],
+      "responsibility": "为调度、注册与协调链路提供一致性服务。", "dependsOn": ["dtstack-common"], "deployOrder": 2, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "node-label", "key": "node-role.kubernetes.io/dtstack-zookeeper", "value": "true", "stickyData": true, "note": "数据目录与节点落点必须一致。" },
+      "serviceNames": ["zookeeper-client:2181"], "ports": [2181], "configKeys": ["global.zookeeper.host"], "imageRepos": ["dtstack/zookeeper"], "failureModes": ["协调服务不可用", "依赖组件启动失败"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-ORDER-1014", "section": "§二-基础服务" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "redis-operator", "name": "Redis Operator", "layer": "storage", "chartNames": ["redis-operator"], "pkgNames": ["redis-7.2.3_rel_k8s"],
+      "responsibility": "提供 Redis 自定义资源控制器，是 redis-standalone 的安装前置。", "dependsOn": ["zookeeper"], "deployOrder": 3, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "先安装 operator，再创建 Redis 实例。" },
+      "serviceNames": [], "ports": [], "configKeys": [], "imageRepos": ["dtstack/redis-operator"], "failureModes": ["Redis CR 无控制器处理", "redis-standalone 无法创建"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-MATERIAL-0915", "section": "redis-7.2.3_rel_k8s" }], "verifiedAt": "2026-10-22", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "redis-standalone", "name": "Redis Standalone", "layer": "storage", "chartNames": ["redis-standalone"], "pkgNames": ["redis-standalone-7.2.3_rel_k8s"],
+      "responsibility": "提供平台缓存、会话和任务协同数据。", "dependsOn": ["redis-operator"], "deployOrder": 4, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": true, "note": "Service 名必须与 common-config 契约一致。" },
+      "serviceNames": ["redis-standalone-master:6379"], "ports": [6379], "configKeys": ["redis.url", "redis.password"], "imageRepos": ["dtstack/redis"], "failureModes": ["门户持续转圈", "组件回落 127.0.0.1", "Redis 0/1"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-ORDER-1014", "section": "§二-基础服务" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "mysql", "name": "MySQL", "layer": "storage", "chartNames": ["mysql"], "pkgNames": ["mysql-8.0.39_rel_k8s"],
+      "responsibility": "平台业务元数据库，保存用户、权限、任务、调度实例和元数据。", "dependsOn": ["dtstack-common"], "deployOrder": 5, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "config-key", "key": "global.nodeRole.mysql.role", "value": "dtstack-mysql", "stickyData": true, "note": "既有数据目录在哪台就必须落哪台，禁止重新初始化。" },
+      "serviceNames": ["mysql:3306"], "ports": [3306], "configKeys": ["global.db.host", "global.db.password", "global.nodeRole.mysql.role"], "imageRepos": ["dtstack/mysql"], "failureModes": ["登录失败", "任务列表异常", "全站级故障", "落错节点看到空库"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§2" }, { "id": "SRC-ORDER-1014", "section": "§二-基础服务" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "kube-prometheus-stack", "name": "kube-prometheus-stack", "layer": "infra", "chartNames": ["kube-prometheus-stack", "grafana"], "pkgNames": ["kube-prometheus-stack-0.63.0"],
+      "responsibility": "提供 Prometheus 指标、告警及由父 chart 带出的 Grafana。", "dependsOn": ["dtstack-common"], "deployOrder": 6, "artifactType": "chart", "providedBy": "component-package/parent-chart", "scope": "required",
+      "placement": { "kind": "node-label", "key": "node-role.kubernetes.io/dtstack-prometheus", "value": "true", "stickyData": true, "note": "Grafana 由父 chart 提供，不单独生成安装步骤。" },
+      "serviceNames": ["prometheus", "grafana"], "ports": [9090, 3000], "configKeys": [], "imageRepos": [], "failureModes": ["监控大盘无数据", "子 chart 漏传"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-ORDER-1014", "section": "§二-基础服务/§四-15" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "postgresql", "name": "PostgreSQL", "layer": "storage", "chartNames": ["postgresql"], "pkgNames": ["postgresql-16.4.0_rel_k8s"],
+      "responsibility": "为启用 PostgreSQL 的产品能力提供关系存储。", "dependsOn": ["dtstack-common"], "deployOrder": 7, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "node-label", "key": "node-role.kubernetes.io/postgresql", "value": "true", "stickyData": true, "note": "该标签是裸 postgresql 前缀，不能擅自补 dtstack。" },
+      "serviceNames": ["postgresql:5432"], "ports": [5432], "configKeys": [], "imageRepos": ["dtstack/postgresql"], "failureModes": ["数据库连接失败", "数据目录落错节点"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-ORDER-1014", "section": "§二-基础服务" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "elasticsearch", "name": "Elasticsearch", "layer": "storage", "chartNames": ["elasticsearch"], "pkgNames": ["Elasticsearch_8.18.3_rel_k8s"],
+      "responsibility": "提供检索、索引和部分向量能力。", "dependsOn": ["dtstack-common"], "deployOrder": 8, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "node-label", "key": "node-role.kubernetes.io/dtstack-elastic", "value": "true", "stickyData": true, "note": "落点、数据目录与内核参数同时核验。" },
+      "serviceNames": ["external-es-svc.dtstack:9200"], "ports": [9200], "configKeys": ["global.elasticsearch.host"], "imageRepos": ["dtstack/elasticsearch"], "failureModes": ["索引不可用", "数据目录漂移", "节点内核参数不足"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-DUTY-0915", "section": "§2" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "minio", "name": "MinIO", "layer": "storage", "chartNames": ["minio"], "pkgNames": ["Minio-RELEASE.2025-03-12"],
+      "responsibility": "提供任务产物、插件、日志、模型和多模态对象存储。", "dependsOn": ["dtstack-common"], "deployOrder": 9, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "node-label+hostname", "key": "node-role.kubernetes.io/dtstack-minio", "value": "true", "stickyData": true, "note": "多节点都有标签时还需用 kubernetes.io/hostname 钉死数据落点。" },
+      "serviceNames": ["external-minio-svc.dtstack:9000"], "ports": [9000], "configKeys": ["minio.endpoint", "s3.endpoint", "s3.bucket"], "imageRepos": ["dtstack/minio"], "failureModes": ["任务 S3 403", "桶不存在", "落点错误看到空数据"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-REPLAY-0923", "section": "§D-15/§S-05" }], "verifiedAt": "2026-09-23", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "csi-s3", "name": "csi-s3", "layer": "storage", "chartNames": ["csi-s3"], "pkgNames": ["csi-s3-0.43.4_rel_k8s"],
+      "responsibility": "把 S3 对象存储暴露为 Kubernetes 卷。", "dependsOn": ["minio"], "deployOrder": 10, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "daemonset", "key": "worker", "value": "all", "stickyData": false, "note": "节点侧执行，endpoint 不能按 Pod 内 DNS 假设。" },
+      "serviceNames": [], "ports": [], "configKeys": ["endpoint", "bucket", "storageClassName"], "imageRepos": ["dtstack/csi-s3"], "failureModes": ["PVC Provisioning 失败", "节点无法解析 Service 名", "旧卷未更新"],
+      "sources": [{ "id": "SRC-REPLAY-0923", "section": "§D-18" }, { "id": "SRC-BRIEF-1022", "section": "§6" }], "verifiedAt": "2026-09-23", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "kafka", "name": "Kafka", "layer": "storage", "chartNames": ["kafka"], "pkgNames": ["Kafka-2.4.1_rel_k8s"],
+      "responsibility": "提供实时开发和流式采集消息通道。", "dependsOn": ["dtstack-common"], "deployOrder": 11, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "node-affinity", "key": "nodeAffinityPreset", "value": "project-compute-nodes", "stickyData": true, "note": "修改顶层 nodeAffinityPreset，不是 metrics 子树。" },
+      "serviceNames": ["kafka:9092"], "ports": [9092], "configKeys": ["global.hostPathRoot"], "imageRepos": ["dtstack/kafka"], "failureModes": ["实时冒烟无法开始", "chart 期望 tag 与包内镜像不一致"],
+      "sources": [{ "id": "SRC-REPLAY-0923", "section": "§D-17" }, { "id": "SRC-ORDER-1014", "section": "§二-基础服务" }], "verifiedAt": "2026-09-23", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "chunjun112", "name": "ChunJun 1.12", "layer": "plugin", "chartNames": ["chunjun1.12"], "pkgNames": ["ChunJun1.12"],
+      "responsibility": "提供离线数据同步执行引擎与连接器基础。", "dependsOn": ["dtstack-common", "minio"], "deployOrder": 12, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "plugin-job", "key": "global.plugin.jobCount", "value": "business-node-count", "stickyData": false, "note": "Job 落地数必须与可调度业务节点数一致。" },
+      "serviceNames": [], "ports": [], "configKeys": ["global.plugin.jobCount"], "imageRepos": ["dtstack/chunjun112"], "failureModes": ["同步任务缺连接器", "插件 Job 0/0", "S3A 驱动缺失"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§5" }, { "id": "SRC-REPLAY-0923", "section": "§S-07/§S-08" }], "verifiedAt": "2026-09-23", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "datasourcex", "name": "DatasourceX", "layer": "plugin", "chartNames": ["datasourcex"], "pkgNames": ["DTDatasourceX"],
+      "responsibility": "分发数据库与消息系统等数据源驱动。", "dependsOn": ["chunjun112"], "deployOrder": 13, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "plugin-job", "key": "global.plugin.jobCount", "value": "business-node-count", "stickyData": false, "note": "需抽查节点插件目录。" },
+      "serviceNames": [], "ports": [], "configKeys": ["global.plugin.jobCount"], "imageRepos": ["dtstack/datasourcex"], "failureModes": ["找不到驱动", "插件未分发到任务节点"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§5" }, { "id": "SRC-ORDER-1014", "section": "§二-插件类/§四-7" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "flinksql116", "name": "FlinkSQL 1.16", "layer": "plugin", "chartNames": ["flinksql1.16"], "pkgNames": ["DTFlinkSql1.16"],
+      "responsibility": "提供实时 SQL 执行插件与参数模板。", "dependsOn": ["datasourcex"], "deployOrder": 14, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "plugin-job", "key": "global.plugin.jobCount", "value": "business-node-count", "stickyData": false, "note": "perjob 与 session 两套参数均需核对。" },
+      "serviceNames": [], "ports": [], "configKeys": ["global.plugin.jobCount", "perjob", "session"], "imageRepos": ["dtstack/flinksql116"], "failureModes": ["改错参数分支不生效", "插件 Job 未落地"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-ORDER-1014", "section": "§二-插件类/§四-12" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "sqlparserserver", "name": "SqlParser", "layer": "plugin", "chartNames": ["sqlparser", "sqlparserserver"], "pkgNames": ["DTSqlParser"],
+      "responsibility": "提供 SQL 解析、校验和数据 API 解析能力。", "dependsOn": ["flinksql116"], "deployOrder": 15, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "plugin-job", "key": "global.plugin.jobCount", "value": "business-node-count", "stickyData": false, "note": "包名与 chart 名不同，需双向映射。" },
+      "serviceNames": ["sqlparserserver"], "ports": [], "configKeys": ["global.plugin.jobCount"], "imageRepos": ["dtstack/sqlparser"], "failureModes": ["SQL 校验失败", "API 解析失败", "chart 名查找困难"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-DUTY-0915", "section": "§5" }], "verifiedAt": "2026-10-22", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "engineplugin", "name": "EnginePlugin", "layer": "plugin", "chartNames": ["engineplugin"], "pkgNames": ["DTEnginePlugin"],
+      "responsibility": "向任务节点分发 Spark、Flink 和算子侧引擎插件。", "dependsOn": ["sqlparserserver", "minio"], "deployOrder": 16, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "plugin-job", "key": "global.plugin.jobCount", "value": "business-node-count", "stickyData": true, "note": "completions 不可变；改 jobCount 后必须重装 chart。" },
+      "serviceNames": [], "ports": [], "configKeys": ["global.plugin.jobCount", "global.plugin.nfs_sc", "global.plugin.nfs_path"], "imageRepos": ["dtstack/engineplugin"], "failureModes": ["Job 0/0 不建 Pod", "JAR manifest missing", "节点插件不一致"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6/§7" }, { "id": "SRC-LEDGER-CURRENT", "section": "C-33/C-34/C-39" }], "verifiedAt": "2026-09-30", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "dtuic", "name": "DTUic", "layer": "common", "chartNames": ["dtuic", "dtuicfront"], "pkgNames": ["DTUic"],
+      "responsibility": "用户中心、登录、权限与离线开发入口。", "dependsOn": ["mysql", "redis-standalone", "engineplugin"], "deployOrder": 17, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "依赖数据库和缓存服务名契约。" },
+      "serviceNames": ["dtuic", "dtuicfront"], "ports": [], "configKeys": ["global.db.host", "redis.url"], "imageRepos": ["dtstack/dtuic"], "failureModes": ["登录失败", "权限页空白", "页面持续转圈"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§3" }, { "id": "SRC-BRIEF-1022", "section": "§6" }], "verifiedAt": "2026-10-22", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "publicservice", "name": "PublicService", "layer": "common", "chartNames": ["publicservice"], "pkgNames": ["DTPublicService"],
+      "responsibility": "提供公共配置、字典、权限和引擎公共注册。", "dependsOn": ["mysql", "redis-standalone", "dtuic"], "deployOrder": 18, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "EM 重渲染后必须复核 init sidecar restartPolicy。" },
+      "serviceNames": ["publicservice"], "ports": [], "configKeys": ["redis.url", "global.db.host"], "imageRepos": ["dtstack/publicservice"], "failureModes": ["Init:0/N", "菜单或权限异常", "模型保存失败"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§3" }, { "id": "SRC-REPLAY-0923", "section": "§D-13" }], "verifiedAt": "2026-09-30", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "engine", "name": "Engine", "layer": "engine", "chartNames": ["engine"], "pkgNames": ["DTSchedulex"],
+      "responsibility": "接收调度与手工触发，管理任务引擎生命周期。", "dependsOn": ["mysql", "zookeeper", "engineplugin", "agent-shell"], "deployOrder": 19, "artifactType": "chart", "providedBy": "DTSchedulex-package", "scope": "required",
+      "placement": { "kind": "statefulset", "key": "dtstack", "value": "true", "stickyData": true, "note": "双副本一次只处理一个；重渲染后复核 init restartPolicy。" },
+      "serviceNames": ["engine"], "ports": [8090], "configKeys": ["global.plugin.jobCount", "global.plugin.nfs_sc"], "imageRepos": ["dtstack/engine"], "failureModes": ["任务等待资源", "Init:0/N", "插件版本在节点间不一致"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§5" }, { "id": "SRC-LEDGER-CURRENT", "section": "C-36/C-39" }], "verifiedAt": "2026-09-30", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "metadata", "name": "Metadata", "layer": "app", "chartNames": ["metadata"], "pkgNames": ["DTMetadata"],
+      "responsibility": "提供元数据、项目和内容解析相关能力。", "dependsOn": ["mysql", "publicservice", "engine"], "deployOrder": 20, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "SOP 顺序先于 stream，但增量 SQL 引用 streamapp，知识图必须提示依赖越界。" },
+      "serviceNames": ["metadata"], "ports": [], "configKeys": ["unstructured.data.task.remote.content.parse"], "imageRepos": ["dtstack/metadata"], "failureModes": ["全新环境 streamapp 不存在", "Init:0/N", "内容解析地址错误"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-REPLAY-0923", "section": "§D-13" }], "verifiedAt": "2026-09-30", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "agent-shell", "name": "AgentShell", "layer": "engine", "chartNames": ["agent-shell"], "pkgNames": ["DTAgentShell"],
+      "responsibility": "在任务节点拉起和管理实际任务进程。", "dependsOn": ["engine", "engineplugin"], "deployOrder": 21, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "daemonset", "key": "dtstack", "value": "true", "stickyData": true, "note": "任务运行节点都要具备插件和路径。" },
+      "serviceNames": ["agentshell"], "ports": [], "configKeys": [], "imageRepos": ["dtstack/agentshell"], "failureModes": ["任务提交无反应", "节点插件缺失", "任务进程无法拉起"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§5" }, { "id": "SRC-BRIEF-1022", "section": "§6" }], "verifiedAt": "2026-10-22", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "kkfileview", "name": "kkFileView", "layer": "common", "chartNames": ["kkfileview"], "pkgNames": ["kkFileView"],
+      "responsibility": "提供文档预览能力。", "dependsOn": ["publicservice"], "deployOrder": 22, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "服务名和上游配置必须一致。" },
+      "serviceNames": ["kkfileview"], "ports": [], "configKeys": [], "imageRepos": ["dtstack/kkfileview"], "failureModes": ["文档无法预览", "上游服务名解析失败"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-DUTY-0915", "section": "§4" }], "verifiedAt": "2026-10-22", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "nacos", "name": "Nacos", "layer": "gateway", "chartNames": ["nacos"], "pkgNames": ["Nacos"],
+      "responsibility": "提供服务注册、发现和部分配置能力。", "dependsOn": ["mysql", "zookeeper"], "deployOrder": 23, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "statefulset", "key": "dtstack", "value": "true", "stickyData": true, "note": "成员名单必须形成真实集群，Running 不等于实例同步正常。" },
+      "serviceNames": ["nacos-cs:8848"], "ports": [8848], "configKeys": ["member.list", "cluster.conf"], "imageRepos": ["dtstack/nacos"], "failureModes": ["网关 157", "实例时有时无", "三节点各自成单节点"],
+      "sources": [{ "id": "SRC-LEDGER-CURRENT", "section": "观察-56/C-43" }, { "id": "SRC-DUTY-0915", "section": "§2" }], "verifiedAt": "2026-10-01", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "gateway", "name": "Gateway", "layer": "gateway", "chartNames": ["gateway"], "pkgNames": ["DTGateway"],
+      "responsibility": "统一处理门户后端请求的鉴权、路由和服务选择。", "dependsOn": ["dtuic", "nacos", "publicservice"], "deployOrder": 24, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "157 只作为传播结果，必须回到 Nacos 与目标 Endpoint。" },
+      "serviceNames": ["gateway"], "ports": [], "configKeys": ["global.domain"], "imageRepos": ["dtstack/gateway"], "failureModes": ["157 没有可用服务", "接口 401/502", "路由标签不匹配"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§4" }, { "id": "SRC-LEDGER-CURRENT", "section": "观察-56" }], "verifiedAt": "2026-10-01", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "batch", "name": "Batch", "layer": "app", "chartNames": ["batch", "batchfront"], "pkgNames": ["DTBatch"],
+      "responsibility": "离线开发业务与任务执行入口。", "dependsOn": ["gateway", "engine", "sqlparserserver"], "deployOrder": 25, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "AI 开关在组件参数层，重部署后才传播到运行容器。" },
+      "serviceNames": ["batch", "batchfront"], "ports": [], "configKeys": ["batch.ai.switch"], "imageRepos": ["dtstack/batch"], "failureModes": ["离线开发不可用", "任务参数未传播", "日志链路 404"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§4/§5" }, { "id": "SRC-BRIEF-1022", "section": "§6" }], "verifiedAt": "2026-10-22", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "stream", "name": "Stream", "layer": "app", "chartNames": ["stream", "streamfront"], "pkgNames": ["DTStream"],
+      "responsibility": "实时开发、FlinkSQL 和流式任务入口。", "dependsOn": ["gateway", "engine", "kafka", "flinksql116"], "deployOrder": 26, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "metadata 在顺序上先装，但可能跨越依赖引用 streamapp。" },
+      "serviceNames": ["stream", "streamfront"], "ports": [], "configKeys": ["stream.ai.switch"], "imageRepos": ["dtstack/stream"], "failureModes": ["实时页面不可用", "任务 K8s 零对象", "Flink 参数不生效"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6" }, { "id": "SRC-REPLAY-0923", "section": "§S-09/§S-13" }], "verifiedAt": "2026-09-23", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "api", "name": "Data API", "layer": "app", "chartNames": ["api", "apifront", "api-server"], "pkgNames": ["DTApi"],
+      "responsibility": "把 SQL 和数据服务发布为受控 HTTP API。", "dependsOn": ["gateway", "nacos", "sqlparserserver", "engine"], "deployOrder": 27, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "Nacos 实例抖动会传播为 Gateway 157。" },
+      "serviceNames": ["api-server", "apifront"], "ports": [], "configKeys": [], "imageRepos": ["dtstack/api"], "failureModes": ["API 调用 157", "路由无后端", "数据服务不可用"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§4" }, { "id": "SRC-LEDGER-CURRENT", "section": "观察-56" }], "verifiedAt": "2026-10-01", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "assets", "name": "Assets", "layer": "app", "chartNames": ["assets", "assetsfront"], "pkgNames": ["DTAssets"],
+      "responsibility": "提供元数据资产、数据目录与内容解析入口。", "dependsOn": ["gateway", "metadata", "minio"], "deployOrder": 28, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "多模态内容解析还依赖 uniparse 与对象存储契约。" },
+      "serviceNames": ["assets", "assetsfront"], "ports": [], "configKeys": ["unstructured.data.task.remote.content.parse"], "imageRepos": ["dtstack/assets"], "failureModes": ["内容解析不出结果", "资产页面不可用", "S3 临时路径异常"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§4" }, { "id": "SRC-MULTIMODAL-0915", "section": "§8" }], "verifiedAt": "2026-10-08", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "easyindex", "name": "EasyIndex", "layer": "app", "chartNames": ["easyindex", "easyindexfront"], "pkgNames": ["DTEasyIndex"],
+      "responsibility": "提供指标定义、计算和查询。", "dependsOn": ["gateway", "metadata", "engine"], "deployOrder": 29, "artifactType": "chart", "providedBy": "component-package", "scope": "conditional",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "EM 重渲染可能丢失 redis.url 并回落本机。" },
+      "serviceNames": ["easyindex", "easyindexfront"], "ports": [], "configKeys": ["redis.url", "index.ai.support", "index.ai.port"], "imageRepos": ["dtstack/easyindex"], "failureModes": ["连接 127.0.0.1", "readiness refused", "指标 AI 不可用"],
+      "sources": [{ "id": "SRC-LEDGER-CURRENT", "section": "C-20" }, { "id": "SRC-DUTY-0915", "section": "§4" }], "verifiedAt": "2026-09-28", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "tag", "name": "Tag", "layer": "app", "chartNames": ["tag", "tagfront"], "pkgNames": ["DTTag"],
+      "responsibility": "提供智能标签相关业务能力。", "dependsOn": ["gateway", "metadata", "engine"], "deployOrder": 30, "artifactType": "chart", "providedBy": "component-package", "scope": "conditional",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "是否安装由商务范围与 feature 开关共同决定。" },
+      "serviceNames": ["tag", "tagfront"], "ports": [], "configKeys": ["global.feature.tag"], "imageRepos": ["dtstack/tag"], "failureModes": ["门户出现假菜单", "标签功能不可用"],
+      "sources": [{ "id": "SRC-FIELDPLAN-0914", "section": "§4.4" }, { "id": "SRC-BRIEF-1022", "section": "§6" }], "verifiedAt": "2026-10-22", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "spark-operator", "name": "Spark Operator", "layer": "engine", "chartNames": ["spark-operator"], "pkgNames": ["spark-operator-2.3.0"],
+      "responsibility": "把 SparkApplication 编排为 driver 和 executor Pod。", "dependsOn": ["engine", "engineplugin"], "deployOrder": 31, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "operator", "key": "dtstack", "value": "true", "stickyData": false, "note": "对象失败后可能快速被清理，取证窗口很短。" },
+      "serviceNames": ["spark-operator"], "ports": [], "configKeys": [], "imageRepos": ["dtstack/spark-operator"], "failureModes": ["Spark 任务无 Pod", "失败对象被快速回收"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§5" }, { "id": "SRC-ORDER-1014", "section": "§二-计算/算子" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "spark-py", "name": "spark-py", "layer": "engine", "chartNames": [], "pkgNames": ["spark-py-dt-1_rel_k8s"],
+      "responsibility": "Spark Python 任务运行镜像，不产生独立 release。", "dependsOn": ["spark-operator"], "deployOrder": 32, "artifactType": "image-only", "providedBy": "image-package", "scope": "required",
+      "placement": { "kind": "consumer-selected", "key": "SparkApplication", "value": "task-node", "stickyData": false, "note": "只验仓库 digest 和任务引用，不生成 chart 安装步骤。" },
+      "serviceNames": [], "ports": [], "configKeys": [], "imageRepos": ["dtstack/spark-py"], "failureModes": ["Spark driver ImagePullBackOff", "错误地把镜像包当 chart"],
+      "sources": [{ "id": "SRC-MATERIAL-0915", "section": "spark-py-dt-1_rel_k8s" }, { "id": "SRC-ORDER-1014", "section": "§二-计算/算子" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "hms-spark-s3", "name": "hms-spark-s3", "layer": "engine", "chartNames": ["hms-spark-s3"], "pkgNames": ["hms-spark-s3-3.1.3"],
+      "responsibility": "提供 Spark、HMS 与 S3 数据湖访问链路。", "dependsOn": ["spark-operator", "spark-py", "minio"], "deployOrder": 33, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "任务要跑通时是计算链必需项。" },
+      "serviceNames": ["hivemetastore", "hiveserver2"], "ports": [], "configKeys": ["s3.endpoint"], "imageRepos": ["dtstack/hms-spark-s3"], "failureModes": ["Spark 无法访问数据湖", "No FileSystem for scheme s3"],
+      "sources": [{ "id": "SRC-ORDER-1014", "section": "§二-计算/算子" }, { "id": "SRC-MATERIAL-0915", "section": "hms-spark-s3" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "kuberay-operator", "name": "KubeRay Operator", "layer": "engine", "chartNames": ["kuberay-operator"], "pkgNames": ["kuberay-operator-1.5.1"],
+      "responsibility": "把 RayJob/RayCluster 编排为 head 和 worker Pod。", "dependsOn": ["engine", "engineplugin"], "deployOrder": 34, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "operator", "key": "dtstack", "value": "true", "stickyData": false, "note": "任务资源和卷由插件模板渲染进 RayJob。" },
+      "serviceNames": ["kuberay-operator"], "ports": [], "configKeys": ["global.plugin.nfs_sc"], "imageRepos": ["dtstack/kuberay-operator"], "failureModes": ["RayJob 无 Pod", "算子任务 OOM", "任务卷未渲染"],
+      "sources": [{ "id": "SRC-DUTY-0915", "section": "§5" }, { "id": "SRC-ORDER-1014", "section": "§二-计算/算子" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "aiworks", "name": "AIWorks", "layer": "app", "chartNames": ["aiworks", "aiworksfront"], "pkgNames": ["AIWorks"],
+      "responsibility": "提供模型、知识库、工作流与多模态业务能力。", "dependsOn": ["redis-standalone", "minio", "kuberay-operator"], "deployOrder": 35, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "node-label", "key": "node-role.kubernetes.io/aiworks", "value": "true", "stickyData": true, "note": "标签使用裸 aiworks 前缀，密码与模型配置必须按现场契约核验。" },
+      "serviceNames": ["aiworks", "aiworksfront"], "ports": [4000], "configKeys": ["ai_switch", "redis.password", "global.model.*"], "imageRepos": ["dtstack/aiworks"], "failureModes": ["Redis 认证失败", "模型连接失败", "知识库不可用"],
+      "sources": [{ "id": "SRC-MULTIMODAL-0915", "section": "§1/§4" }, { "id": "SRC-ORDER-1014", "section": "§二-AIWorks/多模态" }], "verifiedAt": "2026-10-08", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "uniparse", "name": "uniparse", "layer": "app", "chartNames": ["uni-parse"], "pkgNames": ["uniparse_rel_k8s"],
+      "responsibility": "提供 OCR、文档和对象存储内容解析。", "dependsOn": ["assets", "minio", "kuberay-operator"], "deployOrder": 36, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "无 GPU 时使用经确认的 CPU 运行方式；Service 名按当前 Profile。" },
+      "serviceNames": ["uniparse:8000"], "ports": [8000], "configKeys": ["MINIO_ENDPOINT", "MINIO_BUCKET_NAME", "unstructured.data.task.remote.content.parse"], "imageRepos": ["dtstack/uniparse-offline"], "failureModes": ["endpoint 被错误拼入 bucket", "解析超时", "GPU 版无法调度"],
+      "sources": [{ "id": "SRC-MULTIMODAL-0915", "section": "§1/§2" }, { "id": "SRC-ORDER-1014", "section": "§二-AIWorks/多模态" }], "verifiedAt": "2026-10-14", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "flink112-image", "name": "flink112k8s", "layer": "engine", "chartNames": [], "pkgNames": ["flink112k8s_rel_k8s"],
+      "responsibility": "Flink 1.12 任务运行镜像。", "dependsOn": ["chunjun112", "engine"], "deployOrder": null, "artifactType": "image-only", "providedBy": "image-package", "scope": "conditional",
+      "placement": { "kind": "consumer-selected", "key": "task-template", "value": "task-node", "stickyData": false, "note": "只验仓库 digest 与任务对象引用。" },
+      "serviceNames": [], "ports": [], "configKeys": [], "imageRepos": ["dtstack/flink112k8s"], "failureModes": ["任务镜像拉取失败", "运行环境与插件不匹配"],
+      "sources": [{ "id": "SRC-MATERIAL-0915", "section": "flink112k8s_rel_k8s" }], "verifiedAt": "2026-09-15", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "flink116-image", "name": "flink116k8s", "layer": "engine", "chartNames": [], "pkgNames": ["flink116k8s_rel_k8s"],
+      "responsibility": "Flink 1.16 任务运行镜像。", "dependsOn": ["flinksql116", "engine"], "deployOrder": null, "artifactType": "image-only", "providedBy": "image-package", "scope": "conditional",
+      "placement": { "kind": "consumer-selected", "key": "task-template", "value": "task-node", "stickyData": false, "note": "只验仓库 digest 与任务对象引用。" },
+      "serviceNames": [], "ports": [], "configKeys": [], "imageRepos": ["dtstack/flink116k8s"], "failureModes": ["任务镜像拉取失败", "参数改错 perjob/session 分支"],
+      "sources": [{ "id": "SRC-MATERIAL-0915", "section": "flink116k8s_rel_k8s" }], "verifiedAt": "2026-09-15", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "ray-datajuicer", "name": "ray-datajuicer", "layer": "engine", "chartNames": [], "pkgNames": ["ray-datajuicer_rel_k8s"],
+      "responsibility": "算子任务的 Ray 运行镜像。", "dependsOn": ["kuberay-operator"], "deployOrder": null, "artifactType": "image-only", "providedBy": "image-package", "scope": "conditional",
+      "placement": { "kind": "consumer-selected", "key": "RayJob", "value": "task-node", "stickyData": false, "note": "曾出现整批未推但流程显示完成。" },
+      "serviceNames": [], "ports": [], "configKeys": [], "imageRepos": ["dtstack/ray-datajuicer"], "failureModes": ["纯镜像包未推", "RayJob ImagePullBackOff"],
+      "sources": [{ "id": "SRC-REPLAY-0923", "section": "§D-10" }, { "id": "SRC-MATERIAL-0915", "section": "ray-datajuicer_rel_k8s" }], "verifiedAt": "2026-09-30", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "python-runtime", "name": "python runtime", "layer": "engine", "chartNames": [], "pkgNames": ["python_rel_k8s"],
+      "responsibility": "多模态与算子任务的 Python 运行镜像。", "dependsOn": ["kuberay-operator"], "deployOrder": null, "artifactType": "image-only", "providedBy": "image-package", "scope": "conditional",
+      "placement": { "kind": "consumer-selected", "key": "RayJob", "value": "task-node", "stickyData": false, "note": "只验镜像 digest 与任务引用。" },
+      "serviceNames": [], "ports": [], "configKeys": [], "imageRepos": ["dtstack/python"], "failureModes": ["运行镜像缺失", "任务启动失败"],
+      "sources": [{ "id": "SRC-MATERIAL-0915", "section": "python_rel_k8s" }], "verifiedAt": "2026-09-15", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "vectorized-image", "name": "vectorized", "layer": "engine", "chartNames": [], "pkgNames": ["vectorized_rel_k8s"],
+      "responsibility": "多模态向量化任务运行镜像。", "dependsOn": ["aiworks", "kuberay-operator"], "deployOrder": null, "artifactType": "image-only", "providedBy": "image-package", "scope": "conditional",
+      "placement": { "kind": "consumer-selected", "key": "RayJob", "value": "task-node", "stickyData": false, "note": "纯镜像包可能被上传脚本静默跳过。" },
+      "serviceNames": [], "ports": [], "configKeys": [], "imageRepos": ["dtstack/vectorized"], "failureModes": ["镜像未推", "向量化任务无法创建"],
+      "sources": [{ "id": "SRC-MATERIAL-0915", "section": "vectorized_rel_k8s" }, { "id": "SRC-REPLAY-0923", "section": "§D-10" }], "verifiedAt": "2026-09-30", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "xinference-cpu", "name": "xinference-cpu", "layer": "engine", "chartNames": [], "pkgNames": ["xinference-cpu_rel_k8s"],
+      "responsibility": "CPU 模型服务运行物料，按批准范围启用。", "dependsOn": ["aiworks"], "deployOrder": null, "artifactType": "image-only", "providedBy": "image-package", "scope": "conditional",
+      "placement": { "kind": "consumer-selected", "key": "model-service", "value": "approved-node", "stickyData": true, "note": "是否部署受项目范围和审批约束。" },
+      "serviceNames": [], "ports": [], "configKeys": [], "imageRepos": ["dtstack/xinference-cpu"], "failureModes": ["模型服务缺件", "流程完成但仓库无镜像"],
+      "sources": [{ "id": "SRC-MATERIAL-0915", "section": "xinference-cpu_rel_k8s" }, { "id": "SRC-MULTIMODAL-0915", "section": "§1/§2/§8" }], "verifiedAt": "2026-10-08", "confidence": "confirmed", "validForDays": 90
+    },
+    {
+      "id": "portalfront", "name": "PortalFront", "layer": "portal", "chartNames": ["portalfront"], "pkgNames": ["DTFront"],
+      "responsibility": "统一门户静态页面与前端上游路由。", "dependsOn": ["gateway", "dtuic", "publicservice", "batch", "stream", "api", "assets"], "deployOrder": 37, "artifactType": "chart", "providedBy": "component-package", "scope": "required",
+      "placement": { "kind": "worker", "key": "dtstack", "value": "true", "stickyData": false, "note": "必须最后安装；上游未出现时 nginx 可能 CrashLoop。" },
+      "serviceNames": ["portalfront"], "ports": [80], "configKeys": ["global.domain", "global.feature.*"], "imageRepos": ["dtstack/portalfront"], "failureModes": ["host not found in upstream", "门户白屏", "假菜单"],
+      "sources": [{ "id": "SRC-BRIEF-1022", "section": "§6/§7" }, { "id": "SRC-REPLAY-0923", "section": "§D-16" }], "verifiedAt": "2026-09-23", "confidence": "confirmed", "validForDays": 90
+    }
+  ],
+  "deployOrder": [
+    "dtstack-common", "zookeeper", "redis-operator", "redis-standalone", "mysql", "kube-prometheus-stack", "postgresql", "elasticsearch", "minio", "csi-s3", "kafka",
+    "chunjun112", "datasourcex", "flinksql116", "sqlparserserver", "engineplugin",
+    "dtuic", "publicservice", "engine", "metadata", "agent-shell", "kkfileview", "nacos", "gateway",
+    "batch", "stream", "api", "assets", "easyindex", "tag",
+    "spark-operator", "spark-py", "hms-spark-s3", "kuberay-operator", "aiworks", "uniparse", "portalfront"
+  ],
+  "activationChains": [
+    {
+      "id": "upgrade", "title": "版本升级", "source": { "id": "SRC-REPLAY-0923", "section": "D-01～D-20" }, "verifiedAt": "2026-09-30", "confidence": "confirmed",
+      "steps": [
+        { "layer": "声明层", "check": "EM 任务、包版本、values 与目标版本一致", "pass": "任务成功且声明值指向批准版本", "category": "配置/物料" },
+        { "layer": "对象层", "check": "渲染后的工作负载、revision 与 image 引用", "pass": "对象已生成新 revision，引用目标 repo:tag", "category": "对象" },
+        { "layer": "运行层", "check": "新 Pod Ready、imageID/digest 与重启原因", "pass": "实际 imageID 对应目标 digest，无旧 Pod 混跑", "category": "运行态" },
+        { "layer": "结果层", "check": "版本页、接口与最小业务冒烟", "pass": "业务结果符合目标版本，不能只看平台“成功”", "category": "业务结果" }
+      ]
+    },
+    {
+      "id": "configmap", "title": "修改 ConfigMap", "source": { "id": "SRC-BRIEF-1022", "section": "§6/§8" }, "verifiedAt": "2026-10-22", "confidence": "confirmed",
+      "steps": [
+        { "layer": "声明层", "check": "按 secret / sensitive / operational 记录期望状态", "pass": "jobCount、布尔、endpoint 使用规定枚举，秘密不保存明文", "category": "配置" },
+        { "layer": "对象层", "check": "目标 ConfigMap 的 key 集、resourceVersion 与值指纹", "pass": "key 未改名，operational 值与期望相符", "category": "对象" },
+        { "layer": "运行层", "check": "挂载或环境变量是否进入新 Pod，工作负载是否受控重载", "pass": "运行配置指纹已变化，不被重新下载的默认配置覆盖", "category": "运行态" },
+        { "layer": "结果层", "check": "对应 Job、Service 或业务开关的可观察结果", "pass": "例如 jobCount 非 zero 且 Job/Pod 数与 expected 一致", "category": "业务结果" }
+      ]
+    },
+    {
+      "id": "package", "title": "换包 / 换镜像", "source": { "id": "SRC-REPLAY-0923", "section": "D-10/D-11" }, "verifiedAt": "2026-09-30", "confidence": "confirmed",
+      "steps": [
+        { "layer": "声明层", "check": "包校验和、顶层 chart、镜像清单与批准范围", "pass": "不以 .done、上传完成或单个子 chart 代替物料核验", "category": "物料" },
+        { "layer": "对象层", "check": "chart 渲染对象引用的完整 repo:tag 与 pullPolicy", "pass": "声明对象已指向目标镜像，不混用错误路径", "category": "对象" },
+        { "layer": "运行层", "check": "各节点实际 Pod imageID/digest", "pass": "同 tag 场景也以 imageID 为准，节点间无新旧 digest 混跑", "category": "运行态" },
+        { "layer": "结果层", "check": "曾失败的业务动作和最小回归", "pass": "行为确实改变且原故障消失，不能只看 Pod 重启", "category": "业务结果" }
+      ]
+    }
+  ],
+  "contracts": [
+    { "id": "service-names", "title": "服务名契约", "classification": "operational", "statement": "common-config、chart 与真实 Service/FQDN 必须一致。", "items": ["mysql:3306", "redis-standalone-master:6379", "zookeeper-client:2181", "external-minio-svc.dtstack", "external-es-svc.dtstack", "nacos-cs:8848"], "source": { "id": "SRC-BRIEF-1022", "section": "§6" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" },
+    { "id": "jobcount", "title": "plugin.jobCount", "classification": "operational", "statement": "保存 actual/expected，并输出 zero、matches-expected、mismatch；completions 不可变，修改后重装插件 chart。", "items": ["actual", "expected", "zero", "matches-expected", "mismatch"], "source": { "id": "SRC-BRIEF-1022", "section": "§6" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" },
+    { "id": "boolean", "title": "业务开关", "classification": "operational", "statement": "true、false、missing 三态分开；开关开启不等于组件已安装。", "items": ["ai_switch", "feature.*", "batch.ai.switch", "stream.ai.switch", "index.ai.support"], "source": { "id": "SRC-LEDGER-CURRENT", "section": "观察-07" }, "verifiedAt": "2026-09-28", "confidence": "confirmed" },
+    { "id": "endpoint-empty", "title": "endpoint 空值", "classification": "operational", "statement": "按 Profile 输出 empty、non-empty、missing，不把所有 endpoint 统一判定。", "items": ["minio.endpoint", "s3.endpoint"], "source": { "id": "SRC-BRIEF-1022", "section": "§6" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" },
+    { "id": "secret-fingerprint", "title": "秘密指纹", "classification": "secret", "statement": "password、Token、AK/SK 只保存长度与本地盐 HMAC，外发剥离盐。", "items": ["length", "hmac", "changed"], "source": { "id": "SRC-BRIEF-1022", "section": "§8" }, "verifiedAt": "2026-10-23", "confidence": "confirmed" },
+    { "id": "image-digest", "title": "镜像生效", "classification": "operational", "statement": "升级验收只认 Pod imageID/digest，不用 tag 单独证明。", "items": ["declared image", "registry digest", "pod imageID", "business result"], "source": { "id": "SRC-BRIEF-1022", "section": "§6/§7-10" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" }
+  ],
+  "pitfalls": [
+    { "id": "metadata-stream-cross", "title": "顺序正确但依赖越界", "symptom": "metadata 先装，但初始化 SQL 引用了尚未创建的 streamapp。", "source": { "id": "SRC-BRIEF-1022", "section": "§6" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" },
+    { "id": "jobcount-zero", "title": "jobCount=0", "symptom": "插件 Job 显示 0/0 且不创建 Pod。", "source": { "id": "SRC-BRIEF-1022", "section": "§6" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" },
+    { "id": "common-config-rollback", "title": "重新下载 common-config 回退", "symptom": "jobCount、ai_switch 被重置为默认值。", "source": { "id": "SRC-BRIEF-1022", "section": "§6" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" },
+    { "id": "done-lies", "title": ".done 假成功", "symptom": "有完成标记但纯镜像包未进入仓库。", "source": { "id": "SRC-REPLAY-0923", "section": "§D-10" }, "verifiedAt": "2026-09-30", "confidence": "confirmed" },
+    { "id": "multi-chart", "title": "多 chart 只传子 chart", "symptom": "包处理完成但 EM 缺顶层 chart。", "source": { "id": "SRC-REPLAY-0923", "section": "§D-11" }, "verifiedAt": "2026-09-23", "confidence": "confirmed" },
+    { "id": "oci-loader", "title": "OCI 包加载方式错误", "symptom": "加载命令没有明显失败，但没有有效镜像。", "source": { "id": "SRC-REPLAY-0923", "section": "§D-10" }, "verifiedAt": "2026-09-23", "confidence": "confirmed" },
+    { "id": "same-tag", "title": "同 tag 旧 imageID", "symptom": "重启后仍运行节点缓存旧镜像。", "source": { "id": "SRC-BRIEF-1022", "section": "§7-10" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" },
+    { "id": "init-restart-policy", "title": "init sidecar 标记丢失", "symptom": "fluent-bit 永不退出，Pod 卡 Init:0/N。", "source": { "id": "SRC-LEDGER-CURRENT", "section": "C-03/C-36/C-39" }, "verifiedAt": "2026-09-30", "confidence": "confirmed" },
+    { "id": "full-label-key", "title": "标签键必须完整", "symptom": "裸后缀与 chart selector 不匹配，Pod Pending。", "source": { "id": "SRC-BRIEF-1022", "section": "§6/§7-2" }, "verifiedAt": "2026-10-22", "confidence": "confirmed" }
+  ]
+}

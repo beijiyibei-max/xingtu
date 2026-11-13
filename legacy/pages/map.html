@@ -1,0 +1,1093 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>星图 · 数栈核心组件视图</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #030712;
+  --panel: rgba(8, 17, 38, .88);
+  --panel-soft: rgba(15, 29, 59, .62);
+  --border: rgba(128, 171, 255, .18);
+  --text: #ecf4ff;
+  --muted: #91a4c4;
+  --runtime: #5ba8ff;
+  --deploy: #f4c15d;
+  --colocate: #c187ff;
+  --manage: #65e5c2;
+  --danger: #ff8f70;
+  font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; min-width: 1080px; height: 100%; overflow: hidden; }
+
+body {
+  background:
+    radial-gradient(ellipse at 18% 12%, rgba(29, 90, 196, .26), transparent 34%),
+    radial-gradient(ellipse at 82% 72%, rgba(106, 45, 179, .2), transparent 38%),
+    linear-gradient(145deg, #02050d, #050b1c 52%, #02040c);
+  color: var(--text);
+}
+
+button, input, select { font: inherit; }
+
+button, select {
+  color: #d9e8ff;
+  background: rgba(17, 35, 68, .76);
+  border: 1px solid rgba(124, 165, 237, .23);
+  border-radius: 9px;
+  transition: .18s ease;
+}
+
+button { cursor: pointer; }
+button:hover, select:hover { border-color: rgba(117, 175, 255, .65); background: rgba(30, 56, 100, .86); }
+button.active { color: #fff; border-color: #61b3ff; box-shadow: inset 0 0 18px rgba(48, 141, 238, .22), 0 0 14px rgba(48, 141, 238, .16); }
+
+.app { height: 100%; display: grid; grid-template-rows: 70px minmax(0, 1fr) 34px; }
+
+.topbar {
+  display: grid;
+  grid-template-columns: 245px minmax(280px, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 0 22px;
+  border-bottom: 1px solid rgba(112, 164, 255, .19);
+  background: linear-gradient(90deg, rgba(2, 7, 18, .92), rgba(6, 15, 38, .76), rgba(3, 8, 22, .92));
+  box-shadow: 0 8px 35px rgba(0, 5, 22, .38), inset 0 -1px rgba(92, 152, 255, .06);
+  backdrop-filter: blur(18px) saturate(1.25);
+  z-index: 20;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand strong { display: block; font-size: 22px; letter-spacing: .16em; }
+.brand small { display: block; color: var(--muted); margin-top: 2px; font-size: 11px; letter-spacing: .05em; }
+.brand-star {
+  width: 32px; height: 32px; position: relative; transform: rotate(45deg);
+  background: linear-gradient(135deg, #fff, #60baff 42%, #8a6eff 78%, transparent 79%);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 8px #7cc6ff) drop-shadow(0 0 22px rgba(87,168,255,.7));
+  animation: brandPulse 3.2s ease-in-out infinite;
+}
+
+.search-box { position: relative; max-width: 590px; width: 100%; justify-self: center; }
+.search-box input {
+  width: 100%; height: 38px; padding: 0 15px 0 39px;
+  color: var(--text); outline: none;
+  background: rgba(11, 24, 49, .8);
+  border: 1px solid rgba(120, 164, 239, .25);
+  border-radius: 10px;
+}
+.search-box::before { content: "⌕"; position: absolute; z-index: 2; left: 14px; top: 7px; color: #6da7ec; font-size: 20px; }
+.search-box input:focus { border-color: #599de8; box-shadow: 0 0 0 3px rgba(60, 143, 237, .11); }
+.search-results {
+  display: none; position: absolute; left: 0; right: 0; top: 45px; max-height: 300px; overflow: auto;
+  padding: 7px; border: 1px solid rgba(108, 161, 243, .28); border-radius: 12px;
+  background: rgba(5, 14, 32, .97); box-shadow: 0 18px 45px rgba(0,0,0,.42); z-index: 40;
+}
+.search-results.open { display: block; }
+.search-item { padding: 9px 11px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-radius: 8px; cursor: pointer; }
+.search-item:hover, .search-item.focused { background: rgba(54, 107, 180, .25); }
+.search-item strong { font-size: 13px; }
+.search-item small { color: var(--muted); }
+.search-empty { color: var(--muted); padding: 12px; text-align: center; }
+
+.actions { display: flex; gap: 8px; align-items: center; }
+.actions button, .actions select { height: 34px; padding: 0 11px; font-size: 12px; }
+.actions select { outline: none; }
+
+.workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; }
+.map-shell {
+  position: relative; min-width: 0; overflow: hidden; border-right: 1px solid rgba(109, 158, 244, .2);
+  background:
+    radial-gradient(ellipse at 20% 24%, rgba(18, 80, 180, .15), transparent 34%),
+    radial-gradient(ellipse at 78% 72%, rgba(113, 49, 191, .13), transparent 38%),
+    #02050e;
+}
+.map-shell::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  box-shadow: inset 0 0 95px 24px rgba(0, 2, 10, .78), inset 0 -70px 100px rgba(0, 0, 0, .28);
+}
+#starMap { width: 100%; height: 100%; display: block; cursor: grab; user-select: none; }
+#starMap.dragging { cursor: grabbing; }
+#backgroundStars { transform-box: fill-box; transform-origin: center; transition: transform .55s cubic-bezier(.2,.7,.2,1); }
+
+.map-hint { position: absolute; z-index: 4; left: 18px; bottom: 15px; color: rgba(177, 205, 244, .6); font-size: 11px; pointer-events: none; text-shadow: 0 1px 8px #000; }
+.map-status { position: absolute; z-index: 4; top: 15px; left: 17px; display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid rgba(111, 167, 255, .18); border-radius: 999px; color: #88a0c5; background: rgba(3, 10, 26, .58); backdrop-filter: blur(10px); font-size: 9px; letter-spacing: .04em; pointer-events: none; }
+.map-status span { display: inline-flex; gap: 4px; align-items: baseline; }
+.map-status strong { color: #d9ebff; font-size: 11px; }
+.map-status i { width: 3px; height: 3px; border-radius: 50%; background: #4e79b6; }
+.map-status em { padding: 2px 6px; color: #71d9be; border: 1px solid rgba(83, 218, 181, .22); border-radius: 999px; font-style: normal; }
+.zoom-tools { position: absolute; z-index: 4; right: 15px; bottom: 15px; display: grid; gap: 6px; }
+.zoom-tools button { width: 32px; height: 32px; padding: 0; font-size: 16px; }
+.toast {
+  position: absolute; display: none; z-index: 10; max-width: 310px; pointer-events: none;
+  padding: 8px 11px; color: #e8f3ff; font-size: 12px; line-height: 1.55;
+  background: rgba(5, 15, 33, .95); border: 1px solid rgba(102, 159, 238, .36); border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.35);
+}
+.toast.show { display: block; }
+
+.details { min-width: 0; overflow-y: auto; padding: 22px; background: linear-gradient(180deg, rgba(7,16,37,.94), rgba(4,9,22,.96)); box-shadow: inset 20px 0 60px rgba(16, 51, 111, .06); }
+.empty { min-height: 100%; display: grid; align-content: center; justify-items: center; text-align: center; color: var(--muted); }
+.empty h2 { color: var(--text); font-size: 18px; margin: 22px 0 8px; }
+.empty p { max-width: 250px; font-size: 13px; line-height: 1.75; }
+.empty-star { width: 78px; height: 78px; border-radius: 50%; background: radial-gradient(circle, #fff 0 3%, #63b9ff 9%, rgba(80,130,255,.25) 35%, transparent 68%); box-shadow: 0 0 55px rgba(69, 136, 255, .32); }
+
+.detail-kicker { color: #72b7ff; font-size: 11px; letter-spacing: .12em; }
+.detail-title { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
+.detail-title h2 { margin: 0; font-size: 24px; }
+.detail-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 13px currentColor; background: currentColor; }
+.detail-status { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; margin-top: 7px; border-radius: 999px; color: #f4cc78; background: rgba(246, 191, 79, .1); border: 1px solid rgba(246, 191, 79, .25); font-size: 11px; }
+.detail-summary { color: #c5d3e9; font-size: 13px; line-height: 1.75; margin: 16px 0; }
+.meta-grid { display: grid; grid-template-columns: 1fr; gap: 7px; margin: -4px 0 2px; }
+.meta-grid div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: start; padding: 7px 9px; border-radius: 8px; background: rgba(19, 37, 69, .3); }
+.meta-grid span { color: #758bab; font-size: 10px; }
+.meta-grid strong { color: #b9c9df; font-size: 10px; line-height: 1.45; font-weight: 500; }
+.detail-section { padding-top: 15px; margin-top: 15px; border-top: 1px solid rgba(129, 166, 226, .15); }
+.detail-section h3 { margin: 0 0 10px; font-size: 12px; color: #93a9c9; font-weight: 600; letter-spacing: .08em; }
+.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.section-heading h3 { margin-bottom: 9px; }
+.section-heading span { color: #667d9f; font-size: 9px; }
+.focus-section { padding-top: 12px; margin-top: 12px; }
+.focus-depth { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.focus-depth button { height: 29px; padding: 0 7px; font-size: 11px; }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip { padding: 5px 8px; border-radius: 7px; color: #d8e8ff; background: rgba(40, 70, 115, .32); border: 1px solid rgba(103, 150, 218, .2); font-size: 11px; }
+.chip.clickable { cursor: pointer; }
+.chip.clickable:hover { border-color: #66a8f0; }
+.relation-list { display: grid; gap: 8px; }
+.relation-card { padding: 9px 10px; border-radius: 9px; background: rgba(22, 40, 73, .36); border: 1px solid rgba(108, 150, 212, .14); cursor: pointer; }
+.relation-card:hover { border-color: rgba(99, 163, 247, .52); }
+.relation-card .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.relation-card strong { font-size: 12px; }
+.relation-card p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.relation-source { margin-top: 5px; color: #6f84a4; font-size: 9px; line-height: 1.45; }
+.relation-empty { padding: 9px 10px; color: #6f84a4; font-size: 10px; border: 1px dashed rgba(108, 150, 212, .16); border-radius: 8px; }
+.relation-type { font-size: 10px; padding: 2px 6px; border: 1px solid currentColor; border-radius: 999px; opacity: .85; }
+.note-box { padding: 10px; color: #a9bad4; font-size: 11px; line-height: 1.6; border-left: 2px solid #dbac52; background: rgba(219, 172, 82, .07); }
+
+footer { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 19px; color: #7285a5; font-size: 10px; border-top: 1px solid rgba(120, 160, 226, .12); background: rgba(3,8,19,.88); }
+.legend { display: flex; align-items: center; gap: 17px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.line { display: inline-block; width: 20px; border-top: 2px solid; }
+.line.runtime { border-color: var(--runtime); }
+.line.deploy { border-color: var(--deploy); border-top-style: dashed; }
+.line.colocate { border-color: var(--colocate); border-top-style: dotted; }
+.line.manage { border-color: var(--manage); }
+.pending-dot { width: 8px; height: 8px; border-radius: 50%; background: #f2bb58; box-shadow: 0 0 6px rgba(242,187,88,.7); }
+
+.orbit { fill: none; stroke: rgba(123, 173, 255, .11); stroke-width: .85; stroke-dasharray: 2 11; }
+.orbit-core { fill: rgba(22, 71, 139, .045); stroke: rgba(101, 169, 255, .13); stroke-dasharray: 1 8; }
+.orbit-label { fill: rgba(158, 190, 235, .38); font-size: 9px; letter-spacing: .18em; paint-order: stroke; stroke: rgba(2,6,17,.8); stroke-width: 2px; }
+.background-star { fill: #d7ebff; transform-box: fill-box; transform-origin: center; animation: twinkle var(--twinkle, 4s) ease-in-out infinite; }
+.background-star.depth-0 { fill: #7895bd; opacity: .32; }
+.background-star.depth-1 { fill: #c5ddff; opacity: .58; }
+.background-star.depth-2 { fill: #fff; opacity: .86; filter: url(#star-glow); }
+.space-dust { opacity: .36; filter: url(#star-glow); }
+.distant-sun circle { fill: #fff; filter: url(#star-glow); }
+.distant-sun line { stroke: #cfe6ff; stroke-width: .65; opacity: .48; }
+.distant-sun { transform-box: fill-box; transform-origin: center; animation: distantPulse 4.8s ease-in-out infinite; }
+.comet { stroke: url(#comet-fade); stroke-width: 1; opacity: .28; }
+.nebula-cloud { filter: url(#nebula-blur); animation: nebulaBreathe 12s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+
+.edge { fill: none; stroke-width: 1.45; opacity: .55; transition: opacity .2s, stroke-width .2s; pointer-events: stroke; cursor: help; }
+.edge.runtime { stroke: var(--runtime); marker-end: url(#arrow-runtime); }
+.edge.deploy { stroke: var(--deploy); stroke-dasharray: 7 5; marker-end: url(#arrow-deploy); }
+.edge.colocate { stroke: var(--colocate); stroke-dasharray: 2 6; }
+.edge.manage { stroke: var(--manage); stroke-dasharray: 12 5 2 5; marker-end: url(#arrow-manage); }
+.edge.hidden { display: none; }
+.edge.dimmed { opacity: .07; }
+.edge.related { opacity: .95; stroke-width: 2.6; filter: url(#glow); }
+.edge.secondary { opacity: .42; stroke-width: 1.8; }
+.edge.path-edge { opacity: 1; stroke-width: 3.6; filter: url(#glow); animation: edgePulse 1.4s ease-in-out infinite alternate; }
+
+.component-node { cursor: grab; transition: opacity .25s; touch-action: none; }
+.component-node.dragging { cursor: grabbing; }
+.component-node.dragging .halo { opacity: .76; transform: scale(1.26); }
+.component-node.dragging .core { stroke-width: 2.8; }
+.component-node.settled .halo { animation: nodeSettle .34s ease-out; }
+.component-node .halo { opacity: .2; transition: opacity .25s, transform .25s; transform-box: fill-box; transform-origin: center; }
+.component-node .halo-outer { opacity: .09; }
+.component-node .stellar-ring { fill: none; stroke: currentColor; stroke-width: .7; opacity: .3; stroke-dasharray: 2 5; transform-box: fill-box; transform-origin: center; animation: ringSpin 13s linear infinite; }
+.component-node .ring-two { opacity: .17; animation-direction: reverse; animation-duration: 19s; }
+.component-node .core { stroke: rgba(255,255,255,.9); stroke-width: .8; transition: r .2s, stroke-width .2s; }
+.component-node .core-gloss { pointer-events: none; }
+.component-node .core-spark { fill: #fff; opacity: .92; filter: url(#star-glow); pointer-events: none; }
+.component-node .ray-field { transform-box: fill-box; transform-origin: center; animation: raySpin 28s linear infinite; }
+.component-node .ray { stroke: currentColor; stroke-linecap: round; opacity: .52; }
+.component-node .node-label { fill: #f2f7ff; text-anchor: middle; font-size: 11px; font-weight: 680; letter-spacing: .01em; paint-order: stroke; stroke: rgba(1,5,15,.94); stroke-width: 3.4px; stroke-linejoin: round; }
+.component-node .node-sub { fill: #8298bb; text-anchor: middle; font-size: 7.8px; paint-order: stroke; stroke: #020611; stroke-width: 2.4px; }
+.component-node:hover .halo, .component-node.selected .halo, .component-node.path-node .halo { opacity: .58; transform: scale(1.18); }
+.component-node:hover .core, .component-node.selected .core { stroke-width: 2.4; }
+.component-node.selected .node-label { fill: #fff; font-size: 12px; }
+.component-node.dimmed { opacity: .12; }
+.component-node.related { opacity: 1; }
+.component-node.secondary { opacity: .64; }
+.component-node.search-hit .halo { opacity: .8; animation: searchPulse 1s ease-in-out 3; }
+.component-node.path-node .core { stroke-width: 3; }
+.pending-ring { fill: none; stroke: #f4c15d; stroke-width: 1.2; stroke-dasharray: 2 4; opacity: .72; }
+
+.module-line { stroke: rgba(153, 192, 249, .3); stroke-width: 1; stroke-dasharray: 2 4; pointer-events: none; }
+.module-node { cursor: help; }
+.module-node circle { stroke: rgba(255,255,255,.65); stroke-width: 1; filter: url(#glow); }
+.module-node text { fill: #dceaff; font-size: 9px; text-anchor: middle; paint-order: stroke; stroke: #050a16; stroke-width: 2px; }
+
+.path-badge rect { fill: rgba(6,18,39,.96); stroke: rgba(99,164,245,.5); rx: 8; }
+.path-badge text { fill: #dcecff; font-size: 10px; text-anchor: middle; }
+
+@keyframes edgePulse { from { opacity: .68; } to { opacity: 1; } }
+@keyframes searchPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.45); } }
+@keyframes nodeSettle { 0% { transform: scale(1.28); opacity: .7; } 100% { transform: scale(1); opacity: .22; } }
+@keyframes twinkle { 0%,100% { opacity: .28; transform: scale(.82); } 50% { opacity: 1; transform: scale(1.22); } }
+@keyframes distantPulse { 0%,100% { opacity: .45; transform: scale(.88); } 50% { opacity: 1; transform: scale(1.18); } }
+@keyframes nebulaBreathe { from { opacity: .66; transform: scale(.96); } to { opacity: .96; transform: scale(1.05); } }
+@keyframes ringSpin { to { transform: rotate(360deg); } }
+@keyframes raySpin { to { transform: rotate(360deg); } }
+@keyframes brandPulse { 0%,100% { opacity: .8; transform: rotate(45deg) scale(.92); } 50% { opacity: 1; transform: rotate(45deg) scale(1.08); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
+
+@media (max-height: 720px) {
+  .app { grid-template-rows: 62px minmax(0, 1fr) 30px; }
+  .topbar { padding: 0 16px; }
+  .details { padding: 17px; }
+}
+
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-star" aria-hidden="true"></div>
+      <div><strong>星图</strong><small>数栈组件宇宙 · V1.1</small></div>
+      </div>
+      <div class="search-box">
+        <input id="searchInput" type="search" placeholder="搜索组件、模块、端口或功能" aria-label="搜索星图">
+        <div id="searchResults" class="search-results"></div>
+      </div>
+      <div class="actions">
+        <select id="relationFilter" aria-label="关系类型">
+          <option value="runtime">运行依赖</option>
+          <option value="deploy">部署顺序</option>
+          <option value="colocate">同机约束</option>
+          <option value="manage">管理关系</option>
+          <option value="all">全部关系</option>
+        </select>
+        <button class="path-btn" data-path="offline">离线链路</button>
+        <button class="path-btn" data-path="realtime">实时链路</button>
+        <button id="resetBtn">返回全局</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="map-shell">
+        <svg id="starMap" viewBox="0 0 1100 760" role="img" aria-label="数栈组件星图">
+          <defs>
+            <radialGradient id="space-depth" cx="50%" cy="46%" r="76%">
+              <stop offset="0" stop-color="#0b1d3c"></stop>
+              <stop offset=".45" stop-color="#050d21"></stop>
+              <stop offset="1" stop-color="#01030b"></stop>
+            </radialGradient>
+            <radialGradient id="nebula-blue"><stop offset="0" stop-color="#2679ff" stop-opacity=".28"></stop><stop offset=".5" stop-color="#173b9b" stop-opacity=".12"></stop><stop offset="1" stop-color="#071229" stop-opacity="0"></stop></radialGradient>
+            <radialGradient id="nebula-violet"><stop offset="0" stop-color="#9a55ff" stop-opacity=".24"></stop><stop offset=".52" stop-color="#4a238e" stop-opacity=".11"></stop><stop offset="1" stop-color="#110824" stop-opacity="0"></stop></radialGradient>
+            <radialGradient id="nebula-cyan"><stop offset="0" stop-color="#1ee1d0" stop-opacity=".17"></stop><stop offset=".52" stop-color="#0d6d84" stop-opacity=".08"></stop><stop offset="1" stop-color="#04131e" stop-opacity="0"></stop></radialGradient>
+            <radialGradient id="planet-gloss" cx="34%" cy="27%" r="72%"><stop offset="0" stop-color="#fff" stop-opacity=".95"></stop><stop offset=".17" stop-color="#fff" stop-opacity=".3"></stop><stop offset=".58" stop-color="#fff" stop-opacity="0"></stop><stop offset="1" stop-color="#000" stop-opacity=".44"></stop></radialGradient>
+            <linearGradient id="comet-fade"><stop offset="0" stop-color="#80bfff" stop-opacity="0"></stop><stop offset=".7" stop-color="#b6dcff" stop-opacity=".4"></stop><stop offset="1" stop-color="#fff" stop-opacity=".9"></stop></linearGradient>
+            <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="6" result="blur"></feGaussianBlur>
+              <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+            </filter>
+            <filter id="nebula-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"></feGaussianBlur></filter>
+            <filter id="star-glow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.4" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+            <marker id="arrow-runtime" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L0,7 L8,3.5 z" fill="#5ba8ff"></path></marker>
+            <marker id="arrow-deploy" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L0,7 L8,3.5 z" fill="#f4c15d"></path></marker>
+            <marker id="arrow-manage" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L0,7 L8,3.5 z" fill="#ffd36a"></path></marker>
+          </defs>
+          <g id="backgroundStars"></g>
+          <g id="camera">
+            <g id="orbitLayer"></g>
+            <g id="relationLayer"></g>
+            <g id="componentLayer"></g>
+            <g id="moduleLayer"></g>
+            <g id="pathLayer"></g>
+          </g>
+        </svg>
+        <div class="map-status"><span><strong id="componentCount">0</strong> 个组件</span><i></i><span><strong id="relationCount">0</strong> 条关系</span><em>本地离线</em></div>
+        <div class="map-hint">滚轮缩放 · 拖动空白处移动星空 · 拖动星体调整布局 · 点击查看关系</div>
+        <div class="zoom-tools">
+          <button id="zoomIn" aria-label="放大">＋</button>
+          <button id="zoomOut" aria-label="缩小">−</button>
+          <button id="fitMap" aria-label="复位">◎</button>
+        </div>
+        <div id="toast" class="toast"></div>
+      </section>
+
+      <aside id="detailsPanel" class="details">
+        <div class="empty">
+          <div class="empty-star"></div>
+          <h2>探索数栈星系</h2>
+          <p>点击任意大星查看组件功能、内部模块和一跳上下游关系。</p>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      <div class="legend">
+        <span><i class="line runtime"></i>运行依赖</span>
+        <span><i class="line deploy"></i>部署顺序</span>
+        <span><i class="line colocate"></i>同机约束</span>
+        <span><i class="line manage"></i>管理关系</span>
+        <span><i class="pending-dot"></i>待确认</span>
+      </div>
+      <div>内部学习资料 · 不包含客户环境信息</div>
+    </footer>
+  </div>
+  <script>
+(function () {
+  'use strict';
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var TYPE_NAMES = {
+    runtime: '运行依赖',
+    deploy: '部署顺序',
+    colocate: '同机约束',
+    manage: '管理关系'
+  };
+
+  var STAR_MAP_DATA = {
+    baseline: '数栈 6.3（首版资料基线）',
+    defaultSource: '待补充内部产品资料来源',
+    components: [
+      { id: 'em', name: 'EM', fullName: 'EasyManager', group: 'management', x: 550, y: 72, color: '#ffd36a', size: 18, summary: '组件部署、管理与运维入口。具体管理边界和版本能力待内部资料确认。', ports: ['待确认'], modules: ['部署管理', '集群管理', '运维入口'], status: 'pending' },
+      { id: 'dtbatch', name: 'DTBatch', fullName: '离线开发', group: 'application', x: 125, y: 200, color: '#56a7ff', size: 16, summary: '面向离线任务开发与执行管理。模块名称和准确职责待内部资料确认。', ports: ['9020（待确认）'], modules: ['Batch', 'BatchFront', 'BatchSql'], status: 'pending' },
+      { id: 'dtstream', name: 'DTStream', fullName: '实时开发', group: 'application', x: 285, y: 130, color: '#38d5d0', size: 16, summary: '面向实时任务开发与执行管理。模块名称和准确职责待内部资料确认。', ports: ['9021（待确认）'], modules: ['Stream', 'StreamFront', 'StreamSql'], status: 'pending' },
+      { id: 'dtapi', name: 'DTApi', fullName: '数据服务', group: 'application', x: 815, y: 130, color: '#4bd19b', size: 15, summary: '用于数据服务 API 的开发、发布或管理，准确边界待内部资料确认。', ports: ['8087 / 8092（待确认）'], modules: ['Api', 'ApiFront', 'ApiSql'], status: 'pending' },
+      { id: 'dtmetadata', name: 'DTMetadata', fullName: '元数据中心', group: 'application', x: 970, y: 205, color: '#a67cff', size: 16, summary: '承载元数据相关能力，具体模块、采集链路和对外关系待内部资料确认。', ports: ['8875（待确认）'], modules: ['Metadata', 'MetadataFront', 'MetadataSql'], status: 'pending' },
+      { id: 'dtassets', name: 'DTAssets', fullName: '数据资产', group: 'application', x: 1010, y: 365, color: '#f284c6', size: 16, summary: '面向数据资产管理与展示，和元数据等组件的准确关系待内部资料确认。', ports: ['8876（待确认）'], modules: ['Assets', 'AssetsFront', 'AssetsSql'], status: 'pending' },
+      { id: 'dttag', name: 'DTTag', fullName: '数据标签', group: 'application', x: 955, y: 525, color: '#ff78ad', size: 14, summary: '内部资料将其列为应用服务；具体职责、模块和数栈 6.3 适用情况待确认。', ports: ['待确认'], modules: [], status: 'pending', source: '升级教程.md（组件分类清单）' },
+      { id: 'dtvalid', name: 'DTValid', fullName: '数据质量', group: 'application', x: 825, y: 640, color: '#7ae1a8', size: 14, summary: '内部资料将其列为应用服务；具体职责、模块和数栈 6.3 适用情况待确认。', ports: ['待确认'], modules: [], status: 'pending', source: '升级教程.md（组件分类清单）' },
+      { id: 'dteasyindex', name: 'DTEasyIndex', fullName: '指标管理', group: 'application', x: 680, y: 700, color: '#f5b75f', size: 14, summary: '内部资料将其列为应用服务；具体职责、模块和数栈 6.3 适用情况待确认。', ports: ['待确认'], modules: [], status: 'pending', source: '升级教程.md（组件分类清单）' },
+      { id: 'dtuic', name: 'DTUic', fullName: '用户中心', group: 'service', x: 285, y: 315, color: '#65bfff', size: 17, summary: '提供用户、登录和认证相关能力。与公共服务的调用细节待内部资料确认。', ports: ['8006（待确认）'], modules: ['Uic', 'UicFront', 'UicSql'], status: 'pending' },
+      { id: 'dtpublicservice', name: 'DTPublicService', fullName: '公共服务', group: 'service', x: 430, y: 245, color: '#5de2cf', size: 19, summary: '为其他应用提供公共能力或 SDK 服务，准确依赖边界待内部资料确认。', ports: ['8077（待确认）'], modules: ['PublicService', 'PublicServiceSql'], status: 'pending' },
+      { id: 'dtschedulex', name: 'DTSchedulex', fullName: '调度引擎', group: 'service', x: 670, y: 245, color: '#50b7f2', size: 17, summary: '负责任务调度相关能力。离线主链路中的位置待内部资料确认。', ports: ['8090（待确认）'], modules: ['Schedulex', 'Engine', 'SchedulexSql'], status: 'pending' },
+      { id: 'dtgateway', name: 'DTGateway', fullName: '公共网关', group: 'service', x: 815, y: 315, color: '#4fc9e8', size: 14, summary: '内部资料将其列为公共组件；具体职责、端口和调用边界待确认。', ports: ['待确认'], modules: [], status: 'pending', source: '升级教程.md（组件分类清单）' },
+      { id: 'dtfront', name: 'DTFront', fullName: '基础前端服务', group: 'service', x: 285, y: 470, color: '#8fb7ff', size: 14, summary: '内部资料将其列为基础服务；具体承载范围和版本适用情况待确认。', ports: ['待确认'], modules: [], status: 'pending', source: '升级教程.md（组件分类清单）' },
+      { id: 'spark', name: 'Spark', fullName: '批计算引擎', group: 'engine', x: 425, y: 495, color: '#ff9b5c', size: 18, summary: '批处理计算引擎。数栈组件对 Spark 的具体提交与版本关系待确认。', ports: ['按部署确认'], modules: ['Driver', 'Executor', 'History Server'], status: 'pending' },
+      { id: 'flink', name: 'Flink', fullName: '流计算引擎', group: 'engine', x: 675, y: 495, color: '#e86d86', size: 18, summary: '流处理计算引擎。数栈组件对 Flink 的具体提交与版本关系待确认。', ports: ['按部署确认'], modules: ['JobManager', 'TaskManager', 'History Server'], status: 'pending' },
+      { id: 'hadoop', name: 'Hadoop', fullName: '资源与存储底座', group: 'foundation', x: 550, y: 660, color: '#9a82ff', size: 21, summary: '提供 HDFS、YARN 等底层能力。实际部署角色与版本以环境为准。', ports: ['按部署确认'], modules: ['HDFS', 'YARN', 'ZKFC', 'JobHistory'], status: 'pending' },
+      { id: 'dtbase', name: 'DTBase', fullName: '基础中间件', group: 'foundation', x: 550, y: 385, color: '#f3bd57', size: 23, summary: '基础中间件集合。不同环境可能裁剪或复用外部中间件，实际清单待确认。', ports: ['按模块确认'], modules: ['MySQL', 'Redis', 'Kafka', 'ZooKeeper', 'Nacos', 'Prometheus'], status: 'pending' },
+      { id: 'dtengineplugin', name: 'DTEnginePlugin', fullName: '计算引擎插件', group: 'plugin', x: 360, y: 625, color: '#ba8cff', size: 13, summary: '内部资料将其列为插件包；所含引擎适配范围和版本组合待确认。', ports: ['不适用 / 待确认'], modules: [], status: 'pending', source: '升级教程.md（插件包清单）' },
+      { id: 'dtdatasourcex', name: 'DTDatasourceX', fullName: '数据源插件', group: 'plugin', x: 205, y: 580, color: '#45d6b2', size: 13, summary: '内部资料将其列为插件包；具体数据源类型和版本组合待确认。', ports: ['不适用 / 待确认'], modules: [], status: 'pending', source: '升级教程.md（插件包清单）' },
+      { id: 'dtsqlparser', name: 'DTSqlParser', fullName: 'SQL 解析组件', group: 'plugin', x: 120, y: 445, color: '#f09aff', size: 13, summary: '内部资料将其列为插件包；解析能力边界和版本适用情况待确认。', ports: ['待确认'], modules: [], status: 'pending', source: '升级教程.md（插件包清单）' },
+      { id: 'chunjun', name: 'ChunJun', fullName: '数据同步插件体系', group: 'plugin', x: 810, y: 500, color: '#ff8a72', size: 14, summary: '内部资料同时出现 DTFlinkX 与 ChunJun 包名；准确命名、版本映射和运行关系待确认。', ports: ['不适用 / 待确认'], modules: ['DTFlinkX 1.10', 'DTFlinkX 1.12'], status: 'pending', source: '升级教程.md（插件升级清单）' }
+    ],
+    relations: [
+      { id: 'r01', from: 'dtuic', to: 'dtpublicservice', type: 'runtime', label: 'DTUic 调用公共服务能力', status: 'pending' },
+      { id: 'r02', from: 'dtbatch', to: 'dtschedulex', type: 'runtime', label: '离线任务进入调度链路', status: 'pending' },
+      { id: 'r03', from: 'dtschedulex', to: 'spark', type: 'runtime', label: '调度提交批计算任务', status: 'pending' },
+      { id: 'r04', from: 'spark', to: 'hadoop', type: 'runtime', label: 'Spark 使用资源管理或存储能力', status: 'pending' },
+      { id: 'r05', from: 'dtstream', to: 'flink', type: 'runtime', label: '实时任务进入 Flink 执行链路', status: 'pending' },
+      { id: 'r06', from: 'flink', to: 'hadoop', type: 'runtime', label: 'Flink 与底层资源能力的关系', status: 'pending' },
+      { id: 'r07', from: 'dtassets', to: 'dtmetadata', type: 'runtime', label: '数据资产使用元数据能力', status: 'pending' },
+      { id: 'r08', from: 'dtuic', to: 'dtpublicservice', type: 'deploy', label: '公共服务先于用户中心部署', status: 'pending' },
+      { id: 'r09', from: 'dtbatch', to: 'dtbase', type: 'runtime', label: '离线开发使用基础中间件', status: 'pending' },
+      { id: 'r10', from: 'dtstream', to: 'dtbase', type: 'runtime', label: '实时开发使用基础中间件', status: 'pending' },
+      { id: 'r11', from: 'dtapi', to: 'dtbase', type: 'runtime', label: '数据服务使用基础中间件', status: 'pending' },
+      { id: 'r12', from: 'dtmetadata', to: 'dtbase', type: 'runtime', label: '元数据中心使用基础中间件', status: 'pending' },
+      { id: 'r13', from: 'em', to: 'dtbase', type: 'manage', label: 'EM 管理基础中间件', status: 'pending' },
+      { id: 'r14', from: 'em', to: 'hadoop', type: 'manage', label: 'EM 管理计算与存储底座', status: 'pending' },
+      { id: 'r15', from: 'em', to: 'dtbatch', type: 'manage', label: 'EM 管理应用组件', status: 'pending' },
+      { id: 'r16', from: 'em', to: 'dtstream', type: 'manage', label: 'EM 管理应用组件', status: 'pending' },
+      { id: 'r17', from: 'spark', to: 'hadoop', type: 'colocate', label: '是否存在同机约束', status: 'pending' },
+      { id: 'r18', from: 'em', to: 'dttag', type: 'manage', label: 'EM 部署中心管理该组件', status: 'confirmed', source: '升级教程.md（升级操作入口）' },
+      { id: 'r19', from: 'em', to: 'dtvalid', type: 'manage', label: 'EM 部署中心管理该组件', status: 'confirmed', source: '升级教程.md（升级操作入口）' },
+      { id: 'r20', from: 'em', to: 'dteasyindex', type: 'manage', label: 'EM 部署中心管理该组件', status: 'confirmed', source: '升级教程.md（升级操作入口）' },
+      { id: 'r21', from: 'em', to: 'dtgateway', type: 'manage', label: 'EM 部署中心管理该组件', status: 'confirmed', source: '升级教程.md（升级操作入口）' },
+      { id: 'r22', from: 'em', to: 'dtfront', type: 'manage', label: 'EM 部署中心管理该组件', status: 'confirmed', source: '升级教程.md（升级操作入口）' },
+      { id: 'r23', from: 'em', to: 'dtengineplugin', type: 'manage', label: 'EM 部署中心管理插件包', status: 'confirmed', source: '升级教程.md（插件升级操作）' },
+      { id: 'r24', from: 'em', to: 'dtdatasourcex', type: 'manage', label: 'EM 部署中心管理插件包', status: 'confirmed', source: '升级教程.md（插件升级操作）' },
+      { id: 'r25', from: 'em', to: 'dtsqlparser', type: 'manage', label: 'EM 部署中心管理插件包', status: 'confirmed', source: '升级教程.md（插件升级操作）' },
+      { id: 'r26', from: 'em', to: 'chunjun', type: 'manage', label: 'EM 部署中心管理插件包', status: 'confirmed', source: '升级教程.md（插件升级操作）' }
+    ],
+    paths: {
+      offline: { name: '离线链路', nodes: ['dtbatch', 'dtschedulex', 'spark', 'hadoop'], relations: ['r02', 'r03', 'r04'], color: '#62b8ff' },
+      realtime: { name: '实时链路', nodes: ['dtstream', 'flink', 'hadoop'], relations: ['r05', 'r06'], color: '#51e1c1' }
+    }
+  };
+
+  var svg = document.getElementById('starMap');
+  var backgroundLayer = document.getElementById('backgroundStars');
+  var camera = document.getElementById('camera');
+  var orbitLayer = document.getElementById('orbitLayer');
+  var relationLayer = document.getElementById('relationLayer');
+  var componentLayer = document.getElementById('componentLayer');
+  var moduleLayer = document.getElementById('moduleLayer');
+  var pathLayer = document.getElementById('pathLayer');
+  var detailsPanel = document.getElementById('detailsPanel');
+  var filterSelect = document.getElementById('relationFilter');
+  var searchInput = document.getElementById('searchInput');
+  var searchResults = document.getElementById('searchResults');
+  var toast = document.getElementById('toast');
+  var componentById = {};
+  var nodeElements = {};
+  var edgeElements = {};
+  var selectedId = null;
+  var focusDepth = 1;
+  var activePath = null;
+  var searchFocusIndex = -1;
+  var currentSearchMatches = [];
+  var transform = { x: 0, y: 0, scale: 1 };
+  var dragging = false;
+  var dragStart = null;
+  var nodeDragging = null;
+  var suppressClickId = null;
+  var originalPositions = {};
+
+  STAR_MAP_DATA.components.forEach(function (component) {
+    componentById[component.id] = component;
+    originalPositions[component.id] = { x: component.x, y: component.y };
+  });
+
+  function svgEl(name, attrs, parent) {
+    var el = document.createElementNS(NS, name);
+    Object.keys(attrs || {}).forEach(function (key) { el.setAttribute(key, attrs[key]); });
+    if (parent) parent.appendChild(el);
+    return el;
+  }
+
+  function clear(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>\"]/g, function (char) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[char];
+    });
+  }
+
+  function statusText(status) {
+    if (status === 'confirmed') return '已确认';
+    if (status === 'contextual') return '环境相关';
+    return '待确认';
+  }
+
+  function sourceText(item) {
+    return item.source || STAR_MAP_DATA.defaultSource;
+  }
+
+  function createBackground() {
+    clear(backgroundLayer);
+    var seed = 19;
+    function random() {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    }
+    svgEl('rect', { x: 0, y: 0, width: 1100, height: 760, fill: 'url(#space-depth)' }, backgroundLayer);
+    [
+      { cx: 175, cy: 175, rx: 240, ry: 150, fill: 'url(#nebula-blue)', rotate: -18, delay: '-2s' },
+      { cx: 875, cy: 555, rx: 285, ry: 175, fill: 'url(#nebula-violet)', rotate: 16, delay: '-7s' },
+      { cx: 620, cy: 305, rx: 235, ry: 120, fill: 'url(#nebula-cyan)', rotate: -8, delay: '-4s' }
+    ].forEach(function (cloud) {
+      svgEl('ellipse', {
+        cx: cloud.cx, cy: cloud.cy, rx: cloud.rx, ry: cloud.ry, fill: cloud.fill,
+        class: 'nebula-cloud', transform: 'rotate(' + cloud.rotate + ' ' + cloud.cx + ' ' + cloud.cy + ')',
+        style: 'animation-delay:' + cloud.delay
+      }, backgroundLayer);
+    });
+    for (var i = 0; i < 280; i += 1) {
+      var depth = i % 3;
+      var size = depth === 0 ? random() * .55 + .18 : depth === 1 ? random() * .85 + .25 : random() * 1.15 + .45;
+      svgEl('circle', {
+        cx: Math.round(random() * 1100),
+        cy: Math.round(random() * 760),
+        r: size.toFixed(2),
+        class: 'background-star depth-' + depth,
+        style: '--twinkle:' + (3.2 + random() * 5.8).toFixed(2) + 's;animation-delay:-' + (random() * 8).toFixed(2) + 's'
+      }, backgroundLayer);
+    }
+    for (var j = 0; j < 16; j += 1) {
+      var x = 35 + random() * 1030;
+      var y = 45 + random() * 660;
+      var radius = 1.15 + random() * 1.15;
+      var sun = svgEl('g', { class: 'distant-sun', style: 'animation-delay:-' + (random() * 5).toFixed(2) + 's' }, backgroundLayer);
+      svgEl('line', { x1: x - radius * 4, y1: y, x2: x + radius * 4, y2: y }, sun);
+      svgEl('line', { x1: x, y1: y - radius * 4, x2: x, y2: y + radius * 4 }, sun);
+      svgEl('circle', { cx: x, cy: y, r: radius }, sun);
+    }
+    [
+      { x1: 80, y1: 105, x2: 178, y2: 148 },
+      { x1: 820, y1: 92, x2: 905, y2: 128 },
+      { x1: 875, y1: 610, x2: 1020, y2: 666 }
+    ].forEach(function (comet) { svgEl('line', { x1: comet.x1, y1: comet.y1, x2: comet.x2, y2: comet.y2, class: 'comet' }, backgroundLayer); });
+  }
+
+  function createOrbits() {
+    clear(orbitLayer);
+    svgEl('ellipse', { cx: 550, cy: 385, rx: 492, ry: 324, class: 'orbit' }, orbitLayer);
+    svgEl('ellipse', { cx: 550, cy: 390, rx: 335, ry: 235, class: 'orbit' }, orbitLayer);
+    svgEl('ellipse', { cx: 550, cy: 390, rx: 185, ry: 142, class: 'orbit orbit-core' }, orbitLayer);
+    svgEl('ellipse', { cx: 550, cy: 430, rx: 405, ry: 82, class: 'orbit', transform: 'rotate(18 550 430)' }, orbitLayer);
+    var labels = [
+      { x: 70, y: 165, text: '应用星环' },
+      { x: 350, y: 215, text: '公共服务星域' },
+      { x: 455, y: 360, text: '基础核心' },
+      { x: 88, y: 405, text: '插件星带' },
+      { x: 500, y: 35, text: '统一管理入口' }
+    ];
+    labels.forEach(function (item) {
+      var text = svgEl('text', { x: item.x, y: item.y, class: 'orbit-label' }, orbitLayer);
+      text.textContent = item.text;
+    });
+  }
+
+  function edgePath(relation) {
+    var a = componentById[relation.from];
+    var b = componentById[relation.to];
+    var dx = b.x - a.x;
+    var dy = b.y - a.y;
+    var length = Math.sqrt(dx * dx + dy * dy) || 1;
+    var startPadding = a.size + 9;
+    var endPadding = b.size + 13;
+    var x1 = a.x + dx / length * startPadding;
+    var y1 = a.y + dy / length * startPadding;
+    var x2 = b.x - dx / length * endPadding;
+    var y2 = b.y - dy / length * endPadding;
+    var bend = relation.type === 'deploy' ? 18 : relation.type === 'manage' ? -13 : 0;
+    var mx = (x1 + x2) / 2 - dy / length * bend;
+    var my = (y1 + y2) / 2 + dx / length * bend;
+    return 'M ' + x1 + ' ' + y1 + ' Q ' + mx + ' ' + my + ' ' + x2 + ' ' + y2;
+  }
+
+  function showToast(event, html) {
+    toast.innerHTML = html;
+    toast.classList.add('show');
+    var shellRect = svg.parentElement.getBoundingClientRect();
+    var x = event.clientX - shellRect.left + 12;
+    var y = event.clientY - shellRect.top + 12;
+    toast.style.left = Math.min(x, shellRect.width - 330) + 'px';
+    toast.style.top = Math.min(y, shellRect.height - 100) + 'px';
+  }
+
+  function hideToast() { toast.classList.remove('show'); }
+
+  function renderRelations() {
+    clear(relationLayer);
+    edgeElements = {};
+    STAR_MAP_DATA.relations.forEach(function (relation) {
+      var path = svgEl('path', {
+        d: edgePath(relation),
+        class: 'edge ' + relation.type,
+        'data-id': relation.id,
+        'data-from': relation.from,
+        'data-to': relation.to,
+        'data-type': relation.type
+      }, relationLayer);
+      path.addEventListener('mousemove', function (event) {
+        var from = componentById[relation.from].name;
+        var to = componentById[relation.to].name;
+        showToast(event, '<strong>' + escapeHtml(from + ' → ' + to) + '</strong><br>' + escapeHtml(TYPE_NAMES[relation.type] + ' · ' + relation.label) + '<br><span style="color:#f4c15d">待确认</span>');
+      });
+      path.addEventListener('mouseleave', hideToast);
+      path.addEventListener('click', function (event) {
+        event.stopPropagation();
+        selectComponent(relation.from);
+      });
+      edgeElements[relation.id] = path;
+    });
+  }
+
+  function makeRays(group, component) {
+    var rayCount = 12;
+    for (var i = 0; i < rayCount; i += 1) {
+      var angle = Math.PI * 2 * i / rayCount;
+      var inner = component.size + 4;
+      var outer = component.size + (i % 3 === 0 ? 15 : i % 2 === 0 ? 10 : 7);
+      svgEl('line', {
+        x1: Math.cos(angle) * inner,
+        y1: Math.sin(angle) * inner,
+        x2: Math.cos(angle) * outer,
+        y2: Math.sin(angle) * outer,
+        class: 'ray'
+      }, group);
+    }
+  }
+
+  function renderComponents() {
+    clear(componentLayer);
+    nodeElements = {};
+    STAR_MAP_DATA.components.forEach(function (component) {
+      var group = svgEl('g', {
+        class: 'component-node',
+        'data-id': component.id,
+        'data-group': component.group,
+        transform: 'translate(' + component.x + ' ' + component.y + ')',
+        style: 'color:' + component.color
+      }, componentLayer);
+      svgEl('circle', { cx: 0, cy: 0, r: component.size * 2.85, fill: component.color, class: 'halo halo-outer', filter: 'url(#glow)' }, group);
+      svgEl('circle', { cx: 0, cy: 0, r: component.size * 2.05, fill: component.color, class: 'halo', filter: 'url(#glow)' }, group);
+      svgEl('ellipse', { cx: 0, cy: 0, rx: component.size + 8, ry: component.size * .42 + 5, class: 'stellar-ring ring-one', transform: 'rotate(-24)' }, group);
+      svgEl('ellipse', { cx: 0, cy: 0, rx: component.size + 13, ry: component.size * .58 + 6, class: 'stellar-ring ring-two', transform: 'rotate(48)' }, group);
+      var rayField = svgEl('g', { class: 'ray-field' }, group);
+      makeRays(rayField, component);
+      svgEl('circle', { cx: 0, cy: 0, r: component.size, fill: component.color, class: 'core', filter: 'url(#glow)' }, group);
+      svgEl('circle', { cx: 0, cy: 0, r: component.size - .8, fill: 'url(#planet-gloss)', class: 'core-gloss' }, group);
+      svgEl('circle', { cx: -component.size * .27, cy: -component.size * .3, r: Math.max(1.25, component.size * .11), class: 'core-spark' }, group);
+      svgEl('circle', { cx: 0, cy: 0, r: component.size + 7, class: 'pending-ring' }, group);
+      var label = svgEl('text', { x: 0, y: component.size + 23, class: 'node-label' }, group);
+      label.textContent = component.name;
+      var sub = svgEl('text', { x: 0, y: component.size + 34, class: 'node-sub' }, group);
+      sub.textContent = component.fullName;
+      group.addEventListener('pointerdown', function (event) {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        var point = clientToWorld(event.clientX, event.clientY);
+        nodeDragging = {
+          id: component.id,
+          pointerId: event.pointerId,
+          offsetX: point.x - component.x,
+          offsetY: point.y - component.y,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          moved: false
+        };
+        hideToast();
+        group.classList.add('dragging');
+        svg.setPointerCapture(event.pointerId);
+      });
+      group.addEventListener('click', function (event) {
+        event.stopPropagation();
+        if (suppressClickId === component.id) return;
+        selectComponent(component.id);
+      });
+      group.addEventListener('mousemove', function (event) {
+        if (nodeDragging) return;
+        showToast(event, '<strong>' + escapeHtml(component.name) + '</strong> · ' + escapeHtml(component.fullName) + '<br>' + escapeHtml(component.summary));
+      });
+      group.addEventListener('mouseleave', hideToast);
+      nodeElements[component.id] = group;
+    });
+  }
+
+  function renderModules(component) {
+    clear(moduleLayer);
+    if (!component) return;
+    var count = component.modules.length;
+    var radius = Math.max(58, component.size * 3.3 + count * 2);
+    component.modules.forEach(function (moduleName, index) {
+      var angle = Math.PI * 2 * index / count - Math.PI / 2;
+      var x = component.x + Math.cos(angle) * radius;
+      var y = component.y + Math.sin(angle) * radius;
+      svgEl('line', { x1: component.x, y1: component.y, x2: x, y2: y, class: 'module-line' }, moduleLayer);
+      var group = svgEl('g', { class: 'module-node' }, moduleLayer);
+      svgEl('circle', { cx: x, cy: y, r: 6, fill: component.color }, group);
+      var label = svgEl('text', { x: x, y: y + 18 }, group);
+      label.textContent = moduleName;
+      group.addEventListener('mousemove', function (event) {
+        showToast(event, '<strong>' + escapeHtml(moduleName) + '</strong><br>所属组件：' + escapeHtml(component.name) + '<br><span style="color:#f4c15d">模块职责待确认</span>');
+      });
+      group.addEventListener('mouseleave', hideToast);
+    });
+  }
+
+  function renderDetails(component) {
+    var connected = STAR_MAP_DATA.relations.filter(function (relation) {
+      return relation.from === component.id || relation.to === component.id;
+    });
+    var outboundRelations = connected.filter(function (relation) { return relation.from === component.id; });
+    var inboundRelations = connected.filter(function (relation) { return relation.to === component.id; });
+    var moduleHtml = component.modules.map(function (moduleName) {
+      return '<span class="chip">' + escapeHtml(moduleName) + '</span>';
+    }).join('');
+    if (!moduleHtml) moduleHtml = '<span class="chip">模块清单待确认</span>';
+    var portHtml = component.ports.map(function (port) {
+      return '<span class="chip">' + escapeHtml(port) + '</span>';
+    }).join('');
+    function relationCards(relations, outbound) {
+      var html = relations.map(function (relation) {
+        var other = componentById[outbound ? relation.to : relation.from];
+        var direction = outbound ? component.name + ' → ' + other.name : other.name + ' → ' + component.name;
+        var directionLabel = outbound ? '从本组件出发' : '指向本组件';
+        var color = relation.type === 'runtime' ? '#5ba8ff' : relation.type === 'deploy' ? '#f4c15d' : relation.type === 'colocate' ? '#c187ff' : '#65e5c2';
+        return '<div class="relation-card" data-target="' + escapeHtml(other.id) + '">' +
+          '<div class="row"><strong>' + escapeHtml(direction) + '</strong><span class="relation-type" style="color:' + color + '">' + escapeHtml(TYPE_NAMES[relation.type]) + '</span></div>' +
+          '<p>' + escapeHtml(directionLabel + ' · ' + relation.label) + '</p>' +
+          '<div class="relation-source">' + escapeHtml(statusText(relation.status)) + ' · 来源：' + escapeHtml(sourceText(relation)) + '</div></div>';
+      }).join('');
+      return html || '<div class="relation-empty">暂无已录入关系</div>';
+    }
+    var outboundHtml = relationCards(outboundRelations, true);
+    var inboundHtml = relationCards(inboundRelations, false);
+    var depthButtons = [
+      { value: 1, label: '一跳' },
+      { value: 2, label: '两跳' },
+      { value: 'all', label: '全局' }
+    ].map(function (item) {
+      var active = String(focusDepth) === String(item.value);
+      return '<button class="focus-depth-btn' + (active ? ' active' : '') + '" data-depth="' + item.value + '" aria-pressed="' + active + '">' + item.label + '</button>';
+    }).join('');
+
+    detailsPanel.innerHTML =
+      '<div class="detail-kicker">' + escapeHtml(component.group.toUpperCase()) + '</div>' +
+      '<div class="detail-title"><span class="detail-dot" style="color:' + component.color + '"></span><h2>' + escapeHtml(component.name) + '</h2></div>' +
+      '<div style="color:#91a4c4;font-size:12px">' + escapeHtml(component.fullName) + '</div>' +
+      '<div class="detail-status">● 信息' + escapeHtml(statusText(component.status)) + '</div>' +
+      '<p class="detail-summary">' + escapeHtml(component.summary) + '</p>' +
+      '<div class="meta-grid"><div><span>资料基线</span><strong>' + escapeHtml(STAR_MAP_DATA.baseline) + '</strong></div><div><span>信息来源</span><strong>' + escapeHtml(sourceText(component)) + '</strong></div></div>' +
+      '<div class="detail-section focus-section"><div class="section-heading"><h3>局部关系视图</h3><span>控制星图显示深度</span></div><div class="focus-depth">' + depthButtons + '</div></div>' +
+      '<div class="detail-section"><h3>关键端口</h3><div class="chips">' + portHtml + '</div></div>' +
+      '<div class="detail-section"><h3>内部模块</h3><div class="chips">' + moduleHtml + '</div></div>' +
+      '<div class="detail-section"><h3>从本组件出发</h3><div class="relation-list">' + outboundHtml + '</div></div>' +
+      '<div class="detail-section"><h3>指向本组件</h3><div class="relation-list">' + inboundHtml + '</div></div>' +
+      '<div class="detail-section"><div class="note-box">箭头指向被依赖方；本页是首版知识草图，黄色虚环与“待确认”表示尚未完成内部资料核验。</div></div>';
+
+    Array.prototype.forEach.call(detailsPanel.querySelectorAll('.relation-card'), function (card) {
+      card.addEventListener('click', function () { selectComponent(card.getAttribute('data-target')); });
+    });
+    Array.prototype.forEach.call(detailsPanel.querySelectorAll('.focus-depth-btn'), function (button) {
+      button.addEventListener('click', function () {
+        focusDepth = button.getAttribute('data-depth') === 'all' ? 'all' : Number(button.getAttribute('data-depth'));
+        renderDetails(component);
+        updateVisualState();
+      });
+    });
+  }
+
+  function focusDepths() {
+    var depths = {};
+    if (!selectedId) return depths;
+    var maxDepth = focusDepth === 'all' ? Infinity : focusDepth;
+    var queue = [selectedId];
+    depths[selectedId] = 0;
+    while (queue.length) {
+      var current = queue.shift();
+      if (depths[current] >= maxDepth) continue;
+      STAR_MAP_DATA.relations.forEach(function (relation) {
+        var next = null;
+        if (relation.from === current) next = relation.to;
+        if (relation.to === current) next = relation.from;
+        if (next && depths[next] === undefined) {
+          depths[next] = depths[current] + 1;
+          queue.push(next);
+        }
+      });
+    }
+    if (focusDepth === 'all') {
+      STAR_MAP_DATA.components.forEach(function (component) {
+        if (depths[component.id] === undefined) depths[component.id] = 99;
+      });
+    }
+    return depths;
+  }
+
+  function updateVisualState() {
+    var filter = filterSelect.value;
+    var depths = focusDepths();
+
+    Object.keys(nodeElements).forEach(function (id) {
+      var el = nodeElements[id];
+      var inFocus = depths[id] !== undefined;
+      el.classList.toggle('selected', id === selectedId);
+      el.classList.toggle('related', inFocus);
+      el.classList.toggle('secondary', inFocus && depths[id] >= 2);
+      el.classList.toggle('dimmed', !!selectedId && !inFocus);
+      el.classList.toggle('path-node', !!activePath && STAR_MAP_DATA.paths[activePath].nodes.indexOf(id) >= 0);
+    });
+
+    STAR_MAP_DATA.relations.forEach(function (relation) {
+      var edge = edgeElements[relation.id];
+      var visibleByFilter = filter === 'all' || relation.type === filter;
+      var inPath = !!activePath && STAR_MAP_DATA.paths[activePath].relations.indexOf(relation.id) >= 0;
+      var direct = !!selectedId && (relation.from === selectedId || relation.to === selectedId);
+      var inFocus = !!selectedId && depths[relation.from] !== undefined && depths[relation.to] !== undefined;
+      edge.classList.toggle('hidden', !visibleByFilter && !inPath);
+      edge.classList.toggle('related', direct);
+      edge.classList.toggle('secondary', inFocus && !direct);
+      edge.classList.toggle('dimmed', !!selectedId && !inFocus);
+      edge.classList.toggle('path-edge', inPath);
+    });
+  }
+
+  function selectComponent(id) {
+    var component = componentById[id];
+    if (!component) return;
+    selectedId = id;
+    activePath = null;
+    Array.prototype.forEach.call(document.querySelectorAll('.path-btn'), function (button) { button.classList.remove('active'); });
+    renderModules(component);
+    renderDetails(component);
+    updateVisualState();
+    searchResults.classList.remove('open');
+  }
+
+  function resetView() {
+    selectedId = null;
+    activePath = null;
+    searchInput.value = '';
+    currentSearchMatches = [];
+    searchResults.classList.remove('open');
+    transform = { x: 0, y: 0, scale: 1 };
+    STAR_MAP_DATA.components.forEach(function (component) {
+      component.x = originalPositions[component.id].x;
+      component.y = originalPositions[component.id].y;
+    });
+    applyTransform();
+    clear(moduleLayer);
+    clear(pathLayer);
+    renderRelations();
+    renderComponents();
+    detailsPanel.innerHTML = '<div class="empty"><div class="empty-star"></div><h2>探索数栈星系</h2><p>点击任意大星查看组件功能、内部模块和一跳上下游关系。</p></div>';
+    Array.prototype.forEach.call(document.querySelectorAll('.path-btn'), function (button) { button.classList.remove('active'); });
+    updateVisualState();
+  }
+
+  function renderPathBadge(path) {
+    clear(pathLayer);
+    var first = componentById[path.nodes[0]];
+    var text = path.nodes.map(function (id) { return componentById[id].name; }).join(' → ');
+    var width = Math.max(220, text.length * 7 + 30);
+    var group = svgEl('g', { class: 'path-badge' }, pathLayer);
+    svgEl('rect', { x: first.x - width / 2, y: first.y - 78, width: width, height: 28 }, group);
+    var label = svgEl('text', { x: first.x, y: first.y - 59 }, group);
+    label.textContent = text + '（待确认）';
+  }
+
+  function showPath(pathId) {
+    var path = STAR_MAP_DATA.paths[pathId];
+    activePath = activePath === pathId ? null : pathId;
+    selectedId = null;
+    clear(moduleLayer);
+    Array.prototype.forEach.call(document.querySelectorAll('.path-btn'), function (button) {
+      button.classList.toggle('active', activePath === button.getAttribute('data-path'));
+    });
+    if (activePath) {
+      filterSelect.value = 'runtime';
+      renderPathBadge(path);
+      detailsPanel.innerHTML =
+        '<div class="detail-kicker">PATH VIEW</div>' +
+        '<div class="detail-title"><span class="detail-dot" style="color:' + path.color + '"></span><h2>' + escapeHtml(path.name) + '</h2></div>' +
+        '<div class="detail-status">● 链路待确认</div>' +
+        '<p class="detail-summary">' + escapeHtml(path.nodes.map(function (id) { return componentById[id].name; }).join(' → ')) + '</p>' +
+        '<div class="note-box">当前用于表达运维学习中的主干思路。准确调用顺序、插件层和终点依赖，需要结合数栈 6.3 内部资料与实际环境逐条核验。</div>';
+    } else {
+      clear(pathLayer);
+      detailsPanel.innerHTML = '<div class="empty"><div class="empty-star"></div><h2>探索数栈星系</h2><p>点击任意大星查看组件功能、内部模块和一跳上下游关系。</p></div>';
+    }
+    updateVisualState();
+  }
+
+  function searchableText(component) {
+    return [component.name, component.fullName, component.summary].concat(component.ports).concat(component.modules).join(' ').toLowerCase();
+  }
+
+  function updateSearch() {
+    var query = searchInput.value.trim().toLowerCase();
+    searchFocusIndex = -1;
+    if (!query) {
+      currentSearchMatches = [];
+      searchResults.classList.remove('open');
+      return;
+    }
+    currentSearchMatches = STAR_MAP_DATA.components.filter(function (component) {
+      return searchableText(component).indexOf(query) >= 0;
+    });
+    if (!currentSearchMatches.length) {
+      searchResults.innerHTML = '<div class="search-empty">没有找到匹配内容</div>';
+    } else {
+      searchResults.innerHTML = currentSearchMatches.map(function (component) {
+        var matchingModule = component.modules.find(function (moduleName) { return moduleName.toLowerCase().indexOf(query) >= 0; });
+        var hint = matchingModule ? '模块 · ' + matchingModule : component.fullName;
+        return '<div class="search-item" data-id="' + component.id + '"><strong>' + escapeHtml(component.name) + '</strong><small>' + escapeHtml(hint) + '</small></div>';
+      }).join('');
+    }
+    searchResults.classList.add('open');
+    Array.prototype.forEach.call(searchResults.querySelectorAll('.search-item'), function (item) {
+      item.addEventListener('click', function () {
+        var id = item.getAttribute('data-id');
+        searchInput.value = componentById[id].name;
+        flashSearchHit(id);
+        selectComponent(id);
+      });
+    });
+  }
+
+  function flashSearchHit(id) {
+    var node = nodeElements[id];
+    if (!node) return;
+    node.classList.remove('search-hit');
+    window.setTimeout(function () { node.classList.add('search-hit'); }, 20);
+    window.setTimeout(function () { node.classList.remove('search-hit'); }, 3200);
+  }
+
+  function applyTransform() {
+    camera.setAttribute('transform', 'translate(' + transform.x + ' ' + transform.y + ') scale(' + transform.scale + ')');
+  }
+
+  function clientToWorld(clientX, clientY) {
+    var rect = svg.getBoundingClientRect();
+    var viewX = (clientX - rect.left) / rect.width * 1100;
+    var viewY = (clientY - rect.top) / rect.height * 760;
+    return {
+      x: (viewX - transform.x) / transform.scale,
+      y: (viewY - transform.y) / transform.scale
+    };
+  }
+
+  function updateDynamicGeometry() {
+    STAR_MAP_DATA.relations.forEach(function (relation) {
+      if (edgeElements[relation.id]) edgeElements[relation.id].setAttribute('d', edgePath(relation));
+    });
+    if (selectedId) renderModules(componentById[selectedId]);
+    if (activePath) renderPathBadge(STAR_MAP_DATA.paths[activePath]);
+  }
+
+  function finishNodeDrag() {
+    if (!nodeDragging) return;
+    var draggedId = nodeDragging.id;
+    var moved = nodeDragging.moved;
+    var node = nodeElements[draggedId];
+    if (node) {
+      node.classList.remove('dragging');
+      if (moved) {
+        node.classList.add('settled');
+        window.setTimeout(function () { node.classList.remove('settled'); }, 360);
+      }
+    }
+    nodeDragging = null;
+    if (moved) {
+      suppressClickId = draggedId;
+      window.setTimeout(function () { suppressClickId = null; }, 0);
+    }
+  }
+
+  function zoomAt(factor, clientX, clientY) {
+    var rect = svg.getBoundingClientRect();
+    var viewX = (clientX - rect.left) / rect.width * 1100;
+    var viewY = (clientY - rect.top) / rect.height * 760;
+    var oldScale = transform.scale;
+    var newScale = Math.max(.62, Math.min(2.35, oldScale * factor));
+    var worldX = (viewX - transform.x) / oldScale;
+    var worldY = (viewY - transform.y) / oldScale;
+    transform.x = viewX - worldX * newScale;
+    transform.y = viewY - worldY * newScale;
+    transform.scale = newScale;
+    applyTransform();
+  }
+
+  filterSelect.addEventListener('change', function () {
+    activePath = null;
+    clear(pathLayer);
+    Array.prototype.forEach.call(document.querySelectorAll('.path-btn'), function (button) { button.classList.remove('active'); });
+    updateVisualState();
+  });
+
+  searchInput.addEventListener('input', updateSearch);
+  searchInput.addEventListener('keydown', function (event) {
+    var items = Array.prototype.slice.call(searchResults.querySelectorAll('.search-item'));
+    if (event.key === 'ArrowDown' && items.length) {
+      event.preventDefault();
+      searchFocusIndex = (searchFocusIndex + 1) % items.length;
+    } else if (event.key === 'ArrowUp' && items.length) {
+      event.preventDefault();
+      searchFocusIndex = (searchFocusIndex - 1 + items.length) % items.length;
+    } else if (event.key === 'Enter' && currentSearchMatches.length) {
+      event.preventDefault();
+      var match = currentSearchMatches[Math.max(0, searchFocusIndex)];
+      searchInput.value = match.name;
+      flashSearchHit(match.id);
+      selectComponent(match.id);
+      return;
+    } else if (event.key === 'Escape') {
+      searchResults.classList.remove('open');
+      return;
+    }
+    items.forEach(function (item, index) { item.classList.toggle('focused', index === searchFocusIndex); });
+  });
+
+  document.addEventListener('click', function (event) {
+    if (!event.target.closest('.search-box')) searchResults.classList.remove('open');
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.path-btn'), function (button) {
+    button.addEventListener('click', function () { showPath(button.getAttribute('data-path')); });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', resetView);
+  document.getElementById('fitMap').addEventListener('click', resetView);
+  document.getElementById('zoomIn').addEventListener('click', function () {
+    var rect = svg.getBoundingClientRect();
+    zoomAt(1.2, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  });
+  document.getElementById('zoomOut').addEventListener('click', function () {
+    var rect = svg.getBoundingClientRect();
+    zoomAt(.83, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  });
+
+  svg.addEventListener('wheel', function (event) {
+    event.preventDefault();
+    zoomAt(event.deltaY < 0 ? 1.1 : .9, event.clientX, event.clientY);
+  }, { passive: false });
+  svg.addEventListener('pointerdown', function (event) {
+    if (event.target.closest && event.target.closest('.component-node')) return;
+    dragging = true;
+    dragStart = { x: event.clientX, y: event.clientY, tx: transform.x, ty: transform.y };
+    svg.classList.add('dragging');
+    svg.setPointerCapture(event.pointerId);
+  });
+  svg.addEventListener('pointermove', function (event) {
+    if (nodeDragging) {
+      var point = clientToWorld(event.clientX, event.clientY);
+      var component = componentById[nodeDragging.id];
+      component.x = Math.max(52, Math.min(1048, point.x - nodeDragging.offsetX));
+      component.y = Math.max(46, Math.min(704, point.y - nodeDragging.offsetY));
+      nodeDragging.moved = nodeDragging.moved || Math.abs(event.clientX - nodeDragging.startClientX) > 3 || Math.abs(event.clientY - nodeDragging.startClientY) > 3;
+      nodeElements[component.id].setAttribute('transform', 'translate(' + component.x + ' ' + component.y + ')');
+      updateDynamicGeometry();
+      return;
+    }
+    if (!dragging) return;
+    var rect = svg.getBoundingClientRect();
+    transform.x = dragStart.tx + (event.clientX - dragStart.x) / rect.width * 1100;
+    transform.y = dragStart.ty + (event.clientY - dragStart.y) / rect.height * 760;
+    applyTransform();
+  });
+  svg.addEventListener('pointerup', function () { finishNodeDrag(); dragging = false; svg.classList.remove('dragging'); });
+  svg.addEventListener('pointercancel', function () { finishNodeDrag(); dragging = false; svg.classList.remove('dragging'); });
+  svg.addEventListener('pointermove', function (event) {
+    if (dragging || nodeDragging) return;
+    var rect = svg.getBoundingClientRect();
+    var px = ((event.clientX - rect.left) / rect.width - .5) * -10;
+    var py = ((event.clientY - rect.top) / rect.height - .5) * -7;
+    backgroundLayer.style.transform = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px) scale(1.018)';
+  });
+  svg.addEventListener('pointerleave', function () { backgroundLayer.style.transform = 'translate(0,0) scale(1)'; });
+  svg.addEventListener('click', function (event) {
+    if (event.target === svg || (event.target.closest && event.target.closest('#backgroundStars'))) resetView();
+  });
+
+  createBackground();
+  createOrbits();
+  renderRelations();
+  renderComponents();
+  document.getElementById('componentCount').textContent = STAR_MAP_DATA.components.length;
+  document.getElementById('relationCount').textContent = STAR_MAP_DATA.relations.length;
+  updateVisualState();
+  var initialView = window.location.hash.replace(/^#/, '');
+  if (initialView.indexOf('path-') === 0 && STAR_MAP_DATA.paths[initialView.slice(5)]) {
+    showPath(initialView.slice(5));
+  } else if (componentById[initialView]) {
+    selectComponent(initialView);
+  }
+  window.STAR_MAP_DATA = STAR_MAP_DATA;
+})();
+
+</script>
+</body>
+</html>

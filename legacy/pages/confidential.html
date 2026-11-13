@@ -1,0 +1,2711 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src data:; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; worker-src 'none'; media-src 'none'">
+  <title>星图 · 保密现场模式</title>
+  <style>:root {
+  color-scheme: dark;
+  --bg: #071017;
+  --bg-deep: #04090e;
+  --panel: rgba(13, 27, 37, 0.9);
+  --panel-soft: rgba(15, 34, 46, 0.7);
+  --line: rgba(137, 183, 204, 0.14);
+  --line-strong: rgba(137, 183, 204, 0.28);
+  --text: #e9f4f5;
+  --muted: #89a2ad;
+  --dim: #5d737d;
+  --cyan: #44e2d1;
+  --cyan-soft: rgba(68, 226, 209, 0.12);
+  --violet: #9d8cff;
+  --green: #75dc9b;
+  --amber: #f2ba63;
+  --pink: #ef7fbd;
+  --danger: #ff7182;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--bg-deep);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 76% 4%, rgba(46, 151, 164, 0.15), transparent 30%),
+    radial-gradient(circle at 16% 48%, rgba(75, 96, 162, 0.1), transparent 34%),
+    linear-gradient(145deg, #071017 0%, #08131b 45%, #050c12 100%);
+  font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(113, 173, 190, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(113, 173, 190, 0.04) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+button,
+select {
+  color: inherit;
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+}
+
+button:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  gap: 28px;
+  padding: 0 34px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(4, 11, 16, 0.86);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  min-width: 230px;
+  align-items: center;
+  gap: 13px;
+}
+
+.brand-mark {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(68, 226, 209, 0.48);
+  border-radius: 50%;
+  box-shadow: inset 0 0 18px rgba(68, 226, 209, 0.14), 0 0 18px rgba(68, 226, 209, 0.08);
+}
+
+.brand-mark::before,
+.brand-mark::after {
+  position: absolute;
+  content: "";
+  border: 1px solid rgba(68, 226, 209, 0.34);
+  border-radius: 50%;
+  transform: rotate(-22deg);
+}
+
+.brand-mark::before {
+  inset: 7px -6px;
+}
+
+.brand-mark::after {
+  inset: 14px -3px;
+}
+
+.brand-mark span {
+  position: absolute;
+  top: 13px;
+  left: 13px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 16px var(--cyan);
+}
+
+.brand-mark i {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+
+.brand strong {
+  display: block;
+  font-size: 18px;
+  letter-spacing: 0.16em;
+}
+
+.brand small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.security-state {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.status-pill,
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #a8bbc3;
+  background: rgba(12, 27, 35, 0.62);
+  font-size: 11px;
+}
+
+.status-pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #718993;
+}
+
+.status-pill.safe {
+  color: #9ce9c0;
+  border-color: rgba(117, 220, 155, 0.2);
+  background: rgba(45, 118, 76, 0.09);
+}
+
+.status-pill.safe i {
+  background: var(--green);
+  box-shadow: 0 0 10px rgba(117, 220, 155, 0.7);
+}
+
+.mode-pill {
+  color: var(--cyan);
+  border-color: rgba(68, 226, 209, 0.24);
+  background: var(--cyan-soft);
+}
+
+.header-spacer {
+  min-width: 132px;
+}
+
+.end-button {
+  min-width: 132px;
+  padding: 9px 13px;
+  border: 1px solid rgba(255, 113, 130, 0.26);
+  border-radius: 8px;
+  color: #ff9ba7;
+  background: rgba(255, 113, 130, 0.06);
+  font-size: 12px;
+}
+
+.end-button:hover {
+  border-color: rgba(255, 113, 130, 0.5);
+  background: rgba(255, 113, 130, 0.12);
+}
+
+.security-strip {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 21px;
+  padding: 0 34px;
+  border-bottom: 1px solid rgba(137, 183, 204, 0.08);
+  color: var(--muted);
+  background: rgba(8, 20, 27, 0.78);
+  font-size: 10px;
+}
+
+.security-strip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.security-strip b {
+  padding: 2px 4px;
+  color: var(--cyan);
+  border: 1px solid rgba(68, 226, 209, 0.22);
+  border-radius: 3px;
+  font: 9px Consolas, monospace;
+}
+
+.security-strip em {
+  overflow: hidden;
+  margin-left: auto;
+  color: #6f8791;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-rail {
+  display: flex;
+  max-width: 1160px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  padding: 25px 28px 0;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.step-item span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font: 10px Consolas, monospace;
+}
+
+.step-item.active {
+  color: var(--text);
+}
+
+.step-item.active span {
+  color: #05201e;
+  border-color: var(--cyan);
+  background: var(--cyan);
+  box-shadow: 0 0 20px rgba(68, 226, 209, 0.22);
+}
+
+.step-item.complete {
+  color: #8eb4af;
+}
+
+.step-item.complete span {
+  color: var(--cyan);
+  border-color: rgba(68, 226, 209, 0.35);
+  background: rgba(68, 226, 209, 0.08);
+}
+
+.step-rail > i {
+  width: 90px;
+  height: 1px;
+  margin: 0 14px;
+  background: linear-gradient(90deg, var(--line-strong), var(--line));
+}
+
+.page {
+  width: min(1380px, calc(100% - 56px));
+  min-height: calc(100vh - 218px);
+  margin: 0 auto;
+  padding: 38px 0 64px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(16, 34, 45, 0.93), rgba(9, 23, 31, 0.86));
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  display: block;
+  color: var(--cyan);
+  font: 10px/1.4 Consolas, "Microsoft YaHei UI", monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hero-grid {
+  display: grid;
+  max-width: 1160px;
+  grid-template-columns: 1.2fr 0.8fr;
+  align-items: center;
+  gap: 60px;
+  margin: 12px auto 38px;
+}
+
+.hero-copy h1 {
+  margin: 13px 0 18px;
+  font-size: clamp(38px, 5vw, 68px);
+  font-weight: 350;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.hero-copy h1 span {
+  color: var(--cyan);
+}
+
+.hero-copy p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.orbit-visual {
+  position: relative;
+  width: 270px;
+  height: 210px;
+  justify-self: center;
+}
+
+.orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: 1px solid rgba(68, 226, 209, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+}
+
+.orbit-one {
+  width: 250px;
+  height: 94px;
+}
+
+.orbit-two {
+  width: 178px;
+  height: 178px;
+  border-color: rgba(157, 140, 255, 0.14);
+  transform: translate(-50%, -50%) rotate(36deg);
+}
+
+.orbit i {
+  position: absolute;
+  top: 5px;
+  right: 47px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 14px var(--cyan);
+}
+
+.orbit-two i {
+  top: auto;
+  right: auto;
+  bottom: 18px;
+  left: 17px;
+  background: var(--violet);
+  box-shadow: 0 0 14px var(--violet);
+}
+
+.core-orb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 104px;
+  height: 104px;
+  place-content: center;
+  border: 1px solid rgba(68, 226, 209, 0.38);
+  border-radius: 50%;
+  text-align: center;
+  background: radial-gradient(circle at 36% 30%, rgba(77, 225, 214, 0.24), rgba(11, 42, 48, 0.96) 60%, #071117 100%);
+  box-shadow: inset -12px -14px 25px rgba(0, 0, 0, 0.3), 0 0 44px rgba(68, 226, 209, 0.12);
+  transform: translate(-50%, -50%);
+}
+
+.core-orb span {
+  color: var(--cyan);
+  font: 34px/1 Consolas, monospace;
+}
+
+.core-orb small {
+  margin-top: 6px;
+  color: #98b8bb;
+  font-size: 10px;
+}
+
+.preflight-layout {
+  display: grid;
+  max-width: 1160px;
+  grid-template-columns: 1fr 330px;
+  gap: 16px;
+  margin: 0 auto;
+}
+
+.permission-panel {
+  padding: 24px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.panel-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-heading h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.panel-heading p {
+  max-width: 390px;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.section-index {
+  color: var(--cyan);
+  font: 11px Consolas, monospace;
+}
+
+.permission-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 17px 0;
+  border-top: 1px solid var(--line);
+}
+
+.permission-question b {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+
+.permission-question small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.choice-group {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.choice-button {
+  min-width: 74px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: #94aab3;
+  background: rgba(7, 17, 23, 0.65);
+  font-size: 11px;
+}
+
+.choice-button:hover,
+.choice-button.selected {
+  color: var(--cyan);
+  border-color: rgba(68, 226, 209, 0.5);
+  background: var(--cyan-soft);
+}
+
+.locked-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+}
+
+.locked-grid div {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(255, 113, 130, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 113, 130, 0.035);
+}
+
+.locked-grid span {
+  grid-row: 1 / 3;
+  color: var(--danger);
+  font-size: 15px;
+}
+
+.locked-grid b {
+  color: #b9c9cf;
+  font-size: 10px;
+}
+
+.locked-grid small {
+  margin-top: 2px;
+  color: #697f87;
+  font-size: 9px;
+}
+
+.mode-preview {
+  display: flex;
+  min-height: 330px;
+  flex-direction: column;
+  padding: 26px;
+  overflow: hidden;
+}
+
+.mode-preview::before {
+  align-self: flex-end;
+  width: 86px;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--line-strong));
+}
+
+.preview-label {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.mode-preview > strong {
+  margin: 20px 0 3px;
+  color: #5c757f;
+  font: 56px/1 Consolas, monospace;
+}
+
+.mode-preview.ready > strong {
+  color: var(--cyan);
+  text-shadow: 0 0 28px rgba(68, 226, 209, 0.2);
+}
+
+.mode-preview h3 {
+  margin: 3px 0 10px;
+  font-size: 19px;
+  font-weight: 550;
+}
+
+.mode-preview p {
+  margin: 0 0 17px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.mode-preview .primary-button {
+  width: 100%;
+  margin-top: auto;
+}
+
+.warning-note {
+  padding: 10px 12px;
+  border: 1px solid rgba(242, 186, 99, 0.22);
+  border-radius: 7px;
+  color: #d8b77e;
+  background: rgba(242, 186, 99, 0.07);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.primary-button {
+  color: #06201e;
+  background: var(--cyan);
+  box-shadow: 0 10px 30px rgba(68, 226, 209, 0.12);
+}
+
+.primary-button:hover {
+  background: #62ebdc;
+}
+
+.secondary-button {
+  color: #a8bbc3;
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 28, 37, 0.7);
+}
+
+.secondary-button:hover {
+  color: var(--text);
+  border-color: rgba(68, 226, 209, 0.32);
+}
+
+.danger-button {
+  color: #29070c;
+  background: var(--danger);
+}
+
+.page-heading,
+.workspace-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 4px 0 25px;
+}
+
+.page-heading h1,
+.workspace-heading h1 {
+  margin: 7px 0 8px;
+  font-size: 30px;
+  font-weight: 450;
+}
+
+.page-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.text-button,
+.back-link {
+  padding: 7px 0;
+  color: var(--muted);
+  background: transparent;
+  font-size: 11px;
+}
+
+.text-button:hover,
+.back-link:hover {
+  color: var(--cyan);
+}
+
+.policy-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 17px;
+  padding: 11px 15px;
+  border: 1px solid rgba(68, 226, 209, 0.16);
+  border-radius: 9px;
+  background: rgba(68, 226, 209, 0.05);
+}
+
+.policy-banner b {
+  color: var(--cyan);
+  font-size: 11px;
+}
+
+.policy-banner span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.policy-banner.danger {
+  border-color: rgba(255, 113, 130, 0.2);
+  background: rgba(255, 113, 130, 0.05);
+}
+
+.policy-banner.danger b {
+  color: #ff94a1;
+}
+
+.symptom-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.symptom-card {
+  position: relative;
+  min-height: 212px;
+  padding: 21px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  text-align: left;
+  background: linear-gradient(150deg, rgba(16, 34, 45, 0.9), rgba(8, 20, 28, 0.88));
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.18);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.symptom-card::after {
+  position: absolute;
+  right: -40px;
+  bottom: -54px;
+  width: 130px;
+  height: 130px;
+  content: "";
+  border: 1px solid rgba(68, 226, 209, 0.1);
+  border-radius: 50%;
+}
+
+.symptom-card:hover {
+  z-index: 1;
+  border-color: rgba(68, 226, 209, 0.38);
+  background: linear-gradient(150deg, rgba(20, 46, 56, 0.96), rgba(9, 25, 32, 0.92));
+  transform: translateY(-3px);
+}
+
+.symptom-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  margin-bottom: 30px;
+  border: 1px solid rgba(68, 226, 209, 0.22);
+  border-radius: 50%;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  font-size: 16px;
+}
+
+.symptom-order {
+  position: absolute;
+  top: 23px;
+  right: 23px;
+  color: #516974;
+  font: 10px Consolas, monospace;
+}
+
+.symptom-card h2 {
+  margin: 0 0 9px;
+  font-size: 15px;
+  font-weight: 550;
+}
+
+.symptom-card p {
+  min-height: 36px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.symptom-card > i {
+  display: block;
+  margin-top: 16px;
+  color: #6e8d94;
+  font-size: 9px;
+  font-style: normal;
+}
+
+.workspace-heading {
+  align-items: center;
+  margin-top: -5px;
+}
+
+.workspace-heading > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.workspace-heading h1 {
+  margin: 2px 0 0;
+  font-size: 20px;
+}
+
+.workspace-heading small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.symptom-mini {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(68, 226, 209, 0.25);
+  border-radius: 50%;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+}
+
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.workspace-actions > span {
+  max-width: 280px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.workspace-grid.l0-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 15px;
+}
+
+.guide-panel {
+  padding: 25px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(16, 34, 45, 0.93), rgba(9, 23, 31, 0.86));
+  box-shadow: var(--shadow);
+}
+
+.guide-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.guide-head h2 {
+  margin: 5px 0 0;
+  font-size: 19px;
+}
+
+.guide-head > span {
+  color: var(--cyan);
+  font: 12px Consolas, monospace;
+}
+
+.guide-progress {
+  height: 2px;
+  margin: 19px 0 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(137, 183, 204, 0.1);
+}
+
+.guide-progress i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), #72a9dd);
+  transition: width 220ms ease;
+}
+
+.guide-steps {
+  padding-left: 5px;
+}
+
+.guide-step {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  padding: 14px 0;
+  opacity: 0.38;
+  border-bottom: 1px solid rgba(137, 183, 204, 0.08);
+}
+
+.guide-step.active,
+.guide-step.passed {
+  opacity: 1;
+}
+
+.step-dot {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font: 10px Consolas, monospace;
+}
+
+.guide-step small {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.guide-step h3 {
+  margin: 3px 0 5px;
+  font-size: 13px;
+}
+
+.guide-step p,
+.guide-step em {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.7;
+}
+
+.guide-step em {
+  display: block;
+  margin-top: 7px;
+  color: #a8d9d4;
+}
+
+.guide-actions {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 18px;
+}
+
+.guide-finished {
+  color: #9ed8b5;
+  font-size: 10px;
+}
+
+.boundary-card {
+  align-self: start;
+  padding: 25px;
+}
+
+.boundary-card h2 {
+  margin: 11px 0;
+  font-size: 20px;
+  line-height: 1.45;
+}
+
+.boundary-card p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.75;
+}
+
+.boundary-card ul {
+  margin: 20px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boundary-card li {
+  padding: 9px 0 9px 19px;
+  border-bottom: 1px solid var(--line);
+  color: #adc0c7;
+  font-size: 10px;
+}
+
+.boundary-card li::before {
+  float: left;
+  margin-left: -19px;
+  color: var(--green);
+  content: "✓";
+}
+
+.workspace-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(6, 16, 22, 0.7);
+}
+
+.workspace-tabs button {
+  display: flex;
+  min-height: 38px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 11px;
+}
+
+.workspace-tabs button span {
+  color: #58707a;
+  font: 9px Consolas, monospace;
+}
+
+.workspace-tabs button i {
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--cyan);
+  background: rgba(68, 226, 209, 0.1);
+  font: 9px Consolas, monospace;
+}
+
+.workspace-tabs button.active {
+  color: var(--text);
+  background: rgba(68, 226, 209, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(68, 226, 209, 0.16);
+}
+
+.workspace-tabs button.active span {
+  color: var(--cyan);
+}
+
+.map-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 14px;
+}
+
+.anonymous-map-panel {
+  min-height: 400px;
+  padding: 22px;
+}
+
+.anonymous-flow {
+  display: flex;
+  min-height: 180px;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 25px 12px;
+}
+
+.service-orb-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.service-orb {
+  position: relative;
+  display: grid;
+  width: 84px;
+  height: 84px;
+  flex: 0 0 auto;
+  place-content: center;
+  border: 1px solid rgba(68, 226, 209, 0.23);
+  border-radius: 50%;
+  color: var(--text);
+  background: radial-gradient(circle at 35% 30%, rgba(73, 210, 202, 0.25), rgba(13, 46, 52, 0.9) 54%, #09161d 100%);
+  box-shadow: inset -10px -12px 18px rgba(0, 0, 0, 0.22), 0 0 20px rgba(68, 226, 209, 0.06);
+}
+
+.service-orb::after {
+  position: absolute;
+  inset: -6px;
+  content: "";
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+
+.service-orb:hover::after,
+.service-orb.active::after {
+  border-color: rgba(68, 226, 209, 0.42);
+}
+
+.service-orb.active {
+  box-shadow: inset -10px -12px 18px rgba(0, 0, 0, 0.22), 0 0 30px rgba(68, 226, 209, 0.18);
+}
+
+.service-orb span {
+  font: 17px Consolas, monospace;
+}
+
+.service-orb small {
+  margin-top: 4px;
+  color: #8caaaf;
+  font-size: 8px;
+}
+
+.flow-line {
+  color: #53757c;
+  font-style: normal;
+}
+
+.flow-line.unconfirmed {
+  color: #314952;
+  letter-spacing: 0.14em;
+}
+
+.relations-list {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(4, 13, 18, 0.45);
+}
+
+.relations-title {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.relations-title b {
+  font-size: 10px;
+}
+
+.relations-title small,
+.object-group > small {
+  color: var(--dim);
+  font-size: 9px;
+}
+
+.relation-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 6px 6px 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(68, 226, 209, 0.14);
+  border-radius: 6px;
+  color: #b8c9ce;
+  background: rgba(68, 226, 209, 0.04);
+  font: 10px Consolas, monospace;
+}
+
+.relation-row i {
+  color: var(--cyan);
+  font-style: normal;
+}
+
+.relation-row button {
+  color: #718891;
+  background: transparent;
+}
+
+.relation-form {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.relation-form select,
+.relation-form button,
+.assignment-row select {
+  padding: 7px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: #b8c9ce;
+  background: #0a1820;
+  font-size: 10px;
+}
+
+.relation-form button {
+  color: var(--cyan);
+}
+
+.empty-inline {
+  padding: 12px 0;
+  color: var(--dim);
+  font-size: 10px;
+}
+
+.object-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.object-group {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(13, 29, 38, 0.84);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.14);
+}
+
+.object-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.object-group-head > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.object-group-head span {
+  color: var(--cyan);
+  font: 9px Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.object-group-head h3 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.object-group-head button {
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 9px;
+}
+
+.object-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 13px 0 9px;
+}
+
+.object-chips span {
+  display: grid;
+  min-width: 30px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid rgba(68, 226, 209, 0.16);
+  border-radius: 6px;
+  color: #bfe2df;
+  background: rgba(68, 226, 209, 0.05);
+  font: 9px Consolas, monospace;
+}
+
+.assignment-panel {
+  grid-column: 1 / 3;
+  padding: 20px;
+}
+
+.assignment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.assignment-row {
+  display: grid;
+  grid-template-columns: 38px 1fr 1fr;
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(4, 13, 18, 0.34);
+}
+
+.assignment-row > b {
+  align-self: center;
+  color: var(--cyan);
+  font: 12px Consolas, monospace;
+}
+
+.assignment-row label {
+  display: grid;
+  gap: 4px;
+  color: var(--dim);
+  font-size: 8px;
+}
+
+.evidence-layout {
+  display: grid;
+  gap: 13px;
+}
+
+.evidence-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 17px 20px;
+}
+
+.subject-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.subject-tabs button {
+  min-width: 40px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  background: rgba(5, 15, 21, 0.5);
+  font: 10px Consolas, monospace;
+}
+
+.subject-tabs button.active {
+  color: #04201d;
+  border-color: var(--cyan);
+  background: var(--cyan);
+}
+
+.evidence-progress {
+  display: grid;
+  min-width: 210px;
+  grid-template-columns: 58px 1fr;
+  align-items: center;
+}
+
+.evidence-progress b {
+  grid-row: 1 / 3;
+  color: var(--cyan);
+  font: 24px Consolas, monospace;
+}
+
+.evidence-progress span {
+  font-size: 10px;
+}
+
+.evidence-progress small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.evidence-columns {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.evidence-category {
+  padding: 18px;
+}
+
+.category-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.category-head h2 {
+  margin: 0 0 2px;
+  font-size: 14px;
+}
+
+.category-head small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.category-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.cyan { color: var(--cyan); }
+.violet { color: var(--violet); }
+.green { color: var(--green); }
+.amber { color: var(--amber); }
+.pink { color: var(--pink); }
+
+.evidence-cards {
+  display: grid;
+  gap: 7px;
+}
+
+.evidence-card {
+  padding: 12px;
+  border: 1px solid rgba(137, 183, 204, 0.1);
+  border-radius: 8px;
+  background: rgba(5, 15, 21, 0.42);
+}
+
+.evidence-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.evidence-title h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.evidence-title p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+.evidence-title > span {
+  flex: 0 0 auto;
+  color: var(--cyan);
+  font: 10px Consolas, monospace;
+}
+
+.result-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.result-options button {
+  padding: 6px 3px;
+  border: 1px solid rgba(137, 183, 204, 0.13);
+  border-radius: 5px;
+  color: #6f858e;
+  background: rgba(12, 27, 35, 0.56);
+  font-size: 8px;
+}
+
+.result-options button:hover {
+  color: #b7c7cd;
+}
+
+.result-options button.selected.confirmed {
+  color: #a4eabd;
+  border-color: rgba(117, 220, 155, 0.36);
+  background: rgba(117, 220, 155, 0.1);
+}
+
+.result-options button.selected.rejected {
+  color: #9db1b9;
+  border-color: rgba(137, 183, 204, 0.28);
+  background: rgba(137, 183, 204, 0.08);
+}
+
+.result-options button.selected.unknown {
+  color: var(--amber);
+  border-color: rgba(242, 186, 99, 0.32);
+  background: rgba(242, 186, 99, 0.08);
+}
+
+.result-options button.selected.forbidden {
+  color: #ff9ba7;
+  border-color: rgba(255, 113, 130, 0.32);
+  background: rgba(255, 113, 130, 0.08);
+}
+
+.results-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 14px;
+}
+
+.results-main {
+  min-width: 0;
+}
+
+.results-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 10px 0 18px;
+}
+
+.results-heading h2 {
+  margin: 5px 0;
+  font-size: 22px;
+}
+
+.results-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.manual-badge {
+  padding: 7px 10px;
+  border: 1px solid rgba(242, 186, 99, 0.2);
+  border-radius: 999px;
+  color: var(--amber);
+  background: rgba(242, 186, 99, 0.06);
+  font-size: 9px;
+}
+
+.candidate-list {
+  display: grid;
+  gap: 10px;
+}
+
+.candidate-card {
+  display: grid;
+  grid-template-columns: 118px 120px 1fr;
+  min-height: 160px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(150deg, rgba(16, 34, 45, 0.92), rgba(8, 20, 28, 0.9));
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.18);
+}
+
+.candidate-card.confidence-high { border-color: rgba(68, 226, 209, 0.34); }
+.candidate-card.confidence-medium { border-color: rgba(242, 186, 99, 0.25); }
+
+.candidate-rank,
+.candidate-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--line);
+}
+
+.candidate-rank span {
+  color: var(--cyan);
+  font: 8px Consolas, monospace;
+  letter-spacing: 0.12em;
+}
+
+.candidate-rank b {
+  margin: 12px 0 5px;
+  font: 27px Consolas, monospace;
+}
+
+.candidate-rank small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.candidate-score {
+  display: grid;
+  grid-template-columns: auto auto;
+  place-content: center;
+}
+
+.candidate-score strong {
+  color: var(--cyan);
+  font: 31px Consolas, monospace;
+}
+
+.candidate-score span {
+  align-self: end;
+  margin-bottom: 5px;
+  color: var(--dim);
+  font-size: 9px;
+}
+
+.candidate-score em {
+  grid-column: 1 / 3;
+  margin-top: 4px;
+  color: #a8bbc3;
+  font-size: 9px;
+  font-style: normal;
+  text-align: center;
+}
+
+.candidate-body {
+  padding: 17px;
+}
+
+.source-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.source-tags span {
+  padding: 4px 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 8px;
+}
+
+.source-tags span.muted {
+  color: var(--muted);
+}
+
+.reason-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+}
+
+.reason-list > div {
+  display: flex;
+  gap: 7px;
+}
+
+.reason-list > div > span {
+  color: var(--cyan);
+  font: 9px Consolas, monospace;
+}
+
+.reason-list p {
+  margin: 0;
+}
+
+.reason-list b,
+.reason-list small {
+  display: block;
+}
+
+.reason-list b {
+  margin-bottom: 2px;
+  font-size: 9px;
+}
+
+.reason-list small {
+  color: var(--muted);
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.candidate-warning {
+  margin-top: 10px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  color: var(--amber);
+  background: rgba(242, 186, 99, 0.06);
+  font-size: 8px;
+}
+
+.results-side {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.next-check,
+.evidence-gaps {
+  padding: 19px;
+}
+
+.next-check h3,
+.evidence-gaps h3 {
+  margin: 8px 0;
+  font-size: 15px;
+}
+
+.next-check p {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.next-check button {
+  padding: 5px 0;
+  color: var(--cyan);
+  background: transparent;
+  font-size: 9px;
+}
+
+.evidence-gaps ul {
+  margin: 13px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence-gaps li {
+  display: grid;
+  grid-template-columns: 13px 1fr auto;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  color: #b4c5cb;
+  font-size: 9px;
+}
+
+.evidence-gaps li b {
+  color: var(--dim);
+  font-size: 7px;
+  font-weight: 400;
+}
+
+.all-covered {
+  margin-top: 12px;
+  color: var(--green);
+  font-size: 10px;
+}
+
+.disclaimer-card {
+  padding: 16px;
+  border: 1px solid rgba(242, 186, 99, 0.16);
+  border-radius: 10px;
+  background: rgba(242, 186, 99, 0.04);
+}
+
+.disclaimer-card b {
+  color: var(--amber);
+  font-size: 10px;
+}
+
+.disclaimer-card p {
+  margin: 7px 0 0;
+  color: #9c8e78;
+  font-size: 9px;
+  line-height: 1.65;
+}
+
+.empty-results {
+  display: grid;
+  min-height: 350px;
+  place-items: center;
+  align-content: center;
+  padding: 50px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 13px;
+  text-align: center;
+  background: rgba(8, 19, 26, 0.45);
+}
+
+.empty-results > span {
+  color: var(--cyan);
+  font-size: 30px;
+}
+
+.empty-results h3 {
+  margin: 12px 0 7px;
+  font-size: 16px;
+}
+
+.empty-results p {
+  max-width: 420px;
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(1, 6, 9, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.modal {
+  width: min(430px, 100%);
+  padding: 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  text-align: center;
+  background: #0b1a22;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.52);
+}
+
+.modal-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  margin: 0 auto 15px;
+  border: 1px solid rgba(255, 113, 130, 0.32);
+  border-radius: 50%;
+  color: var(--danger);
+  background: rgba(255, 113, 130, 0.08);
+}
+
+.modal-icon.safe {
+  color: var(--cyan);
+  border-color: rgba(68, 226, 209, 0.3);
+  background: rgba(68, 226, 209, 0.08);
+  font: 11px Consolas, monospace;
+}
+
+.modal h2 {
+  margin: 0 0 9px;
+  font-size: 18px;
+}
+
+.modal p {
+  margin: 0 0 23px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.modal > div {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+footer {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 34px;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+  background: rgba(4, 11, 16, 0.52);
+  font-size: 9px;
+}
+
+footer span {
+  color: #789099;
+}
+
+footer p {
+  margin: 0;
+}
+
+@media (max-width: 1080px) {
+  .security-state .status-pill:nth-child(2),
+  .security-strip em {
+    display: none;
+  }
+
+  .symptom-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .assignment-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .candidate-card {
+    grid-template-columns: 92px 100px 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 13px 18px;
+  }
+
+  .brand {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .security-state {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .header-spacer {
+    display: none;
+  }
+
+  .security-strip {
+    overflow-x: auto;
+    padding: 7px 18px;
+  }
+
+  .page {
+    width: min(100% - 28px, 680px);
+    padding-top: 28px;
+  }
+
+  .hero-grid,
+  .preflight-layout,
+  .workspace-grid.l0-grid,
+  .map-layout,
+  .results-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .orbit-visual {
+    display: none;
+  }
+
+  .preflight-layout {
+    max-width: 680px;
+  }
+
+  .assignment-panel {
+    grid-column: auto;
+  }
+
+  .evidence-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .step-rail > i {
+    width: 25px;
+    margin: 0 6px;
+  }
+
+  .step-item b {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    position: static;
+  }
+
+  .end-button {
+    min-width: auto;
+  }
+
+  .status-pill,
+  .mode-pill {
+    padding: 5px 7px;
+    font-size: 9px;
+  }
+
+  .security-strip span:nth-child(n+3) {
+    display: none;
+  }
+
+  .hero-copy h1 {
+    font-size: 38px;
+  }
+
+  .permission-question,
+  .page-heading,
+  .workspace-heading,
+  .evidence-toolbar,
+  .results-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .choice-group {
+    width: 100%;
+  }
+
+  .choice-button {
+    flex: 1;
+  }
+
+  .locked-grid,
+  .symptom-grid,
+  .assignment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-actions > span {
+    text-align: left;
+  }
+
+  .anonymous-flow {
+    justify-content: flex-start;
+  }
+
+  .assignment-row {
+    grid-template-columns: 34px 1fr;
+  }
+
+  .assignment-row label:last-child {
+    grid-column: 2;
+  }
+
+  .result-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .candidate-card {
+    grid-template-columns: 86px 1fr;
+  }
+
+  .candidate-score {
+    border-right: 0;
+  }
+
+  .candidate-body {
+    grid-column: 1 / 3;
+    border-top: 1px solid var(--line);
+  }
+
+  .reason-list {
+    grid-template-columns: 1fr;
+  }
+
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 12px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <noscript>此页面需要浏览器启用本地 JavaScript 才能运行；页面不会连接任何网络服务。</noscript>
+  <script>const MODES = {
+  L0: {
+    id: 'L0',
+    name: '零数据引导',
+    description: '不记录现场判断，只提供通用核验顺序。',
+    evidenceEnabled: false
+  },
+  L1: {
+    id: 'L1',
+    name: '匿名人工定界',
+    description: '仅记录匿名对象和固定判断项，刷新或关闭后清空。',
+    evidenceEnabled: true
+  }
+};
+
+const SYMPTOMS = [
+  { id: 'api-timeout', icon: '↗', title: '接口错误或超时', summary: '从入口状态、最早失败Span和下游传播开始收拢。' },
+  { id: 'database', icon: '▣', title: '数据库连接或查询异常', summary: '核验连接池、慢查询、主从状态和共同依赖。' },
+  { id: 'batch', icon: '◫', title: '批处理任务失败', summary: '沿任务实例、调度、计算和数据源逐层定界。' },
+  { id: 'stream', icon: '≈', title: '实时任务延迟或失败', summary: '核验反压、Checkpoint、资源和上下游链路。' },
+  { id: 'service', icon: '◇', title: '服务不可用或健康异常', summary: '从实例、节点、生命周期和依赖关系定位范围。' },
+  { id: 'auth', icon: '⌾', title: '登录、鉴权或网关异常', summary: '区分入口拒绝、身份传播和后端服务异常。' },
+  { id: 'upgrade', icon: '△', title: '升级后异常', summary: '核验版本一致性、实例变化和直接影响范围。' },
+  { id: 'unknown', icon: '·', title: '暂无法分类', summary: '先建立时间边界和影响范围，再选择证据入口。' }
+];
+
+const CATEGORY_META = {
+  trace: { label: 'Trace', color: 'cyan', cap: 30 },
+  log: { label: '日志', color: 'violet', cap: 25 },
+  em: { label: 'EM环境', color: 'green', cap: 20 },
+  change: { label: '变化', color: 'amber', cap: 15 },
+  topology: { label: '拓扑', color: 'pink', cap: 10 }
+};
+
+const EVIDENCE_DEFINITIONS = [
+  { id: 'trace-earliest', category: 'trace', title: '该服务出现最早失败Span', detail: '在同一调用链中，它比其他失败点更早出现。', points: 30 },
+  { id: 'trace-propagated', category: 'trace', title: '该服务仅受下游失败传播影响', detail: '自身没有独立错误，只接收到下游失败结果。', points: 0, propagation: true },
+  { id: 'trace-incomplete', category: 'trace', title: '父子Span存在缺失或孤儿Span', detail: '链路不完整，需要先补充证据再提高可信度。', points: 0 },
+  { id: 'log-correlated', category: 'log', title: '同一服务存在关联错误日志', detail: '关联时间窗和调用对象一致，不记录日志正文。', points: 25 },
+  { id: 'log-burst', category: 'log', title: '同类错误在短时间集中出现', detail: '错误呈集中爆发，不是单个偶发现象。', points: 15 },
+  { id: 'log-exclusive', category: 'log', title: '错误只集中在该服务', detail: '相邻服务未出现相同独立错误。', points: 15 },
+  { id: 'em-unhealthy', category: 'em', title: '实例健康状态异常', detail: 'EM中至少一个当前实例明确不健康。', points: 20 },
+  { id: 'em-lifecycle', category: 'em', title: '实例生命周期失败或停止', detail: '生命周期与健康状态分开核验。', points: 20 },
+  { id: 'em-version', category: 'em', title: '服务版本或实例版本不一致', detail: '只记录是否一致，不记录真实版本号。', points: 10 },
+  { id: 'change-related', category: 'change', title: '故障前存在相关环境变化', detail: '版本、实例、节点、健康或关系出现变化。', points: 15 },
+  { id: 'topology-common', category: 'topology', title: '位于多条失败路径的共同依赖位置', detail: '依赖方向已由现场核验。', points: 10 },
+  { id: 'topology-node', category: 'topology', title: '同节点对象出现共同异常', detail: '仅作为影响线索，需要继续核验节点层证据。', points: 5 }
+];
+
+const GUIDE_STEPS = {
+  'api-timeout': [
+    ['trace', '固定调查边界', '在客户平台中限定环境、入口和故障时间窗，避免跨环境或无界检索。'],
+    ['trace', '找到最早失败点', '从入口Span向下展开，区分主动失败与下游错误传播。'],
+    ['log', '核验错误前后文', '使用客户平台已有能力查看同一关联链路的错误类型和集中度，不复制原文。'],
+    ['em', '检查服务当前状态', '在EM核验对应实例健康、生命周期和版本一致性。'],
+    ['topology', '收拢影响范围', '确认直接上下游与同节点对象，不把冲突关系当成依赖。']
+  ],
+  database: [
+    ['trace', '确认最早数据库失败调用', '区分连接获取、执行超时和上游主动取消。'],
+    ['log', '核验错误类别', '判断是连接池耗尽、连接拒绝、慢查询还是主从异常，不记录SQL全文。'],
+    ['em', '检查数据库服务状态', '核验实例健康、生命周期和节点分布。'],
+    ['topology', '查找共同依赖', '确认是否有多个失败服务共同依赖同一数据库服务。'],
+    ['change', '核验近期变化', '检查故障前是否发生版本、实例或节点变化。']
+  ],
+  batch: [
+    ['trace', '固定任务实例和时间窗', '在客户系统内确认单次任务实例，避免合并多次运行。'],
+    ['trace', '定位首次失败阶段', '依次核验调度、提交、计算和结果写入阶段。'],
+    ['log', '核验异常集中位置', '确认错误集中在调度、计算引擎还是数据源侧。'],
+    ['em', '检查相关服务实例', '核验调度与计算服务健康、生命周期和版本一致性。'],
+    ['change', '核验任务前变化', '确认相关服务是否在失败前升级、扩缩容或迁移节点。']
+  ],
+  stream: [
+    ['trace', '固定作业与故障时间窗', '只核验单个实时作业和明确时间范围。'],
+    ['log', '检查延迟或失败信号', '在客户平台核验反压、Checkpoint、重启和异常类别。'],
+    ['em', '检查计算与依赖服务', '核验实例健康、资源状态和服务版本一致性。'],
+    ['topology', '检查上下游范围', '确认源端、计算、存储和消费端的方向与共同故障点。'],
+    ['change', '检查近期变更', '核验作业配置、服务版本、实例和节点变化。']
+  ],
+  service: [
+    ['em', '确认异常实例范围', '区分单实例、单节点、单服务或多服务异常。'],
+    ['em', '区分健康与生命周期', '分别核验健康状态、运行状态和最近部署状态。'],
+    ['topology', '检查直接依赖', '只查看直接上下游，先避免无边界扩散。'],
+    ['log', '核验服务独立错误', '判断服务自身是否有独立错误，而非仅受下游传播影响。'],
+    ['change', '核验故障前变化', '检查版本、实例、节点、健康与关系变化。']
+  ],
+  auth: [
+    ['trace', '确认拒绝发生位置', '区分浏览器入口、网关、身份服务和业务后端。'],
+    ['log', '核验状态类别', '仅记录鉴权失败类别，不记录账号、Cookie、Token或请求头。'],
+    ['topology', '检查身份传播路径', '确认身份信息经过的直接服务与依赖方向。'],
+    ['em', '检查网关和身份服务', '核验实例健康、生命周期和版本一致性。'],
+    ['change', '核验策略或版本变化', '在客户制度允许范围内确认近期相关变化。']
+  ],
+  upgrade: [
+    ['change', '固定升级边界', '确认升级对象和发生顺序，不记录真实版本号。'],
+    ['em', '检查版本一致性', '核验产品、服务和实例是否处于预期版本组合。'],
+    ['trace', '定位升级后首次失败点', '确认失败是否出现在升级对象或其直接下游。'],
+    ['topology', '收拢直接影响范围', '按依赖方向核验前置与下游，不把冲突关系当依赖。'],
+    ['log', '核验独立错误类别', '确认错误属于兼容、配置、启动还是运行时异常。']
+  ],
+  unknown: [
+    ['trace', '建立时间边界', '先确认故障开始、恢复和持续范围。'],
+    ['topology', '建立影响边界', '区分单用户、单服务、单节点和全局影响。'],
+    ['log', '查找最早异常信号', '只在固定环境和时间窗内核验错误类别。'],
+    ['em', '检查当前环境事实', '核验健康、生命周期、实例和版本一致性。'],
+    ['change', '核验近期变化', '检查故障前是否存在相关环境变化。']
+  ]
+};
+
+function deriveMode(permissions = {}) {
+  return permissions.toolDuringSession === 'yes' && permissions.anonymousJudgement === 'yes' ? MODES.L1 : MODES.L0;
+}
+
+function createInitialObjects() {
+  return {
+    products: [{ id: 'P1' }],
+    services: [
+      { id: 'S1', productId: 'P1', nodeId: 'N1' },
+      { id: 'S2', productId: 'P1', nodeId: 'N1' },
+      { id: 'S3', productId: 'P1', nodeId: 'N2' }
+    ],
+    nodes: [{ id: 'N1' }, { id: 'N2' }],
+    relations: [{ source: 'S1', target: 'S2' }, { source: 'S2', target: 'S3' }]
+  };
+}
+
+function confidenceFor(score, sourceCount) {
+  if (score >= 70 && sourceCount >= 3) return 'high';
+  if (score >= 40) return 'medium';
+  return 'low';
+}
+
+function scoreCandidates(services = [], evidence = {}) {
+  return services.map(service => {
+    const answers = evidence[service.id] || {};
+    const categoryScores = {};
+    const categoryReasons = {};
+    let propagation = false;
+    let incompleteTrace = false;
+
+    for (const definition of EVIDENCE_DEFINITIONS) {
+      if (answers[definition.id] !== 'confirmed') continue;
+      if (definition.propagation) propagation = true;
+      if (definition.id === 'trace-incomplete') incompleteTrace = true;
+      if (definition.points <= 0) continue;
+      const cap = CATEGORY_META[definition.category].cap;
+      const points = Math.min(definition.points, cap);
+      if (points > (categoryScores[definition.category] || 0)) {
+        categoryScores[definition.category] = points;
+        categoryReasons[definition.category] = definition;
+      }
+    }
+
+    const score = Object.values(categoryScores).reduce((sum, points) => sum + points, 0);
+    const evidenceSources = Object.keys(categoryScores);
+    const reasons = evidenceSources.map(category => ({
+      category,
+      points: categoryScores[category],
+      title: categoryReasons[category].title,
+      detail: categoryReasons[category].detail
+    }));
+    return {
+      subjectAlias: service.id,
+      score,
+      confidence: confidenceFor(score, evidenceSources.length),
+      evidenceSources,
+      reasons,
+      propagation,
+      incompleteTrace
+    };
+  }).filter(candidate => candidate.score > 0)
+    .sort((a, b) => b.score - a.score || b.evidenceSources.length - a.evidenceSources.length || a.subjectAlias.localeCompare(b.subjectAlias))
+    .slice(0, 3);
+}
+
+function evidenceProgress(services = [], evidence = {}) {
+  const total = services.length * EVIDENCE_DEFINITIONS.length;
+  const answered = services.reduce((count, service) => count + Object.values(evidence[service.id] || {}).filter(value => value && value !== 'unknown').length, 0);
+  const forbidden = services.reduce((count, service) => count + Object.values(evidence[service.id] || {}).filter(value => value === 'forbidden').length, 0);
+  return { total, answered, forbidden, percent: total ? Math.round(answered / total * 100) : 0 };
+}
+
+function missingEvidence(candidate) {
+  if (!candidate) return Object.keys(CATEGORY_META);
+  return Object.keys(CATEGORY_META).filter(category => !candidate.evidenceSources.includes(category));
+}
+
+const app = document.getElementById('app');
+
+function freshState() {
+  return {
+    stage: 'preflight',
+    permissions: {
+      toolDuringSession: null,
+      anonymousJudgement: null
+    },
+    mode: null,
+    symptomId: '',
+    workspaceTab: 'map',
+    objects: createInitialObjects(),
+    evidence: {},
+    activeSubject: 'S1',
+    guideIndex: 0,
+    modal: null
+  };
+}
+
+let state = freshState();
+
+const RESULT_OPTIONS = [
+  { id: 'confirmed', label: '已确认', tone: 'confirmed' },
+  { id: 'rejected', label: '已排除', tone: 'rejected' },
+  { id: 'unknown', label: '未核验', tone: 'unknown' },
+  { id: 'forbidden', label: '无权限', tone: 'forbidden' }
+];
+
+const CATEGORY_NEXT_CHECK = {
+  trace: '回到客户APM，确认同一链路中最早失败Span及父子关系。',
+  log: '在固定时间窗内核验该匿名服务是否存在独立错误日志。',
+  em: '在EM中分别核验实例健康、生命周期和版本一致性。',
+  change: '检查故障发生前是否存在版本、实例、节点、健康或关系变化。',
+  topology: '核验直接上下游方向，以及是否位于多条失败路径的共同依赖位置。'
+};
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>\"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[character]));
+}
+
+function currentMode() {
+  return state.mode ? MODES[state.mode] : deriveMode(state.permissions);
+}
+
+function currentSymptom() {
+  return SYMPTOMS.find(item => item.id === state.symptomId) || SYMPTOMS[0];
+}
+
+function permissionReady() {
+  return Boolean(state.permissions.toolDuringSession && state.permissions.anonymousJudgement);
+}
+
+function permissionChoice(name, value, label) {
+  const selected = state.permissions[name] === value;
+  return `<button class="choice-button${selected ? ' selected' : ''}" type="button" data-permission="${name}" data-value="${value}" aria-pressed="${selected}">${label}</button>`;
+}
+
+function renderStepRail() {
+  const stages = [
+    ['preflight', '01', '权限预检'],
+    ['symptom', '02', '症状选择'],
+    ['workspace', '03', state.mode === 'L1' ? '匿名定界' : '排障导航']
+  ];
+  const currentIndex = stages.findIndex(([id]) => id === state.stage);
+  return `<div class="step-rail">${stages.map(([id, number, label], index) => `<div class="step-item${index === currentIndex ? ' active' : ''}${index < currentIndex ? ' complete' : ''}"><span>${index < currentIndex ? '✓' : number}</span><b>${label}</b></div>`).join('<i></i>')}</div>`;
+}
+
+function renderHeader() {
+  const mode = state.mode ? currentMode() : null;
+  return `<header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><span></span><i></i></div>
+      <div><strong>星图</strong><small>保密现场模式 · V1.0 MVP</small></div>
+    </div>
+    <div class="security-state">
+      <span class="status-pill safe"><i></i>未连接客户环境</span>
+      <span class="status-pill"><i></i>当前会话不保存</span>
+      ${mode ? `<span class="mode-pill">${mode.id} · ${mode.name}</span>` : ''}
+    </div>
+    ${state.stage !== 'preflight' ? `<button class="end-button" type="button" data-open-end>结束保密会话</button>` : '<span class="header-spacer"></span>'}
+  </header>`;
+}
+
+function renderSecurityStrip() {
+  return `<section class="security-strip" aria-label="安全边界">
+    <span><b>NET</b> 零接口调用</span>
+    <span><b>MEM</b> 仅页面内存</span>
+    <span><b>TXT</b> 无自由文本</span>
+    <span><b>OUT</b> 无复制与导出</span>
+    <em>禁止录入客户名称、真实服务名、IP、账号、关联ID和日志原文</em>
+  </section>`;
+}
+
+function renderPreflight() {
+  const preview = deriveMode(state.permissions);
+  const ready = permissionReady();
+  return `<main class="page preflight-page">
+    <section class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow">CONFIDENTIAL FIELD MODE</span>
+        <h1>先确认边界，<br><span>再开始排障。</span></h1>
+        <p>星图不会尝试连接客户环境。本页面只根据本次授权范围，选择零数据导航或匿名人工定界。</p>
+      </div>
+      <div class="orbit-visual" aria-hidden="true">
+        <div class="orbit orbit-one"><i></i></div>
+        <div class="orbit orbit-two"><i></i></div>
+        <div class="core-orb"><span>0</span><small>外发请求</small></div>
+      </div>
+    </section>
+
+    <section class="preflight-layout">
+      <div class="panel permission-panel">
+        <div class="panel-heading"><div><span class="section-index">01</span><h2>本次现场允许什么？</h2></div><p>两个问题决定L0或L1；其他高风险能力在MVP中强制关闭。</p></div>
+        <div class="permission-question">
+          <div><b>允许在个人电脑上打开本辅助工具吗？</b><small>若不允许，只能在进入远程现场前查看通用清单。</small></div>
+          <div class="choice-group">${permissionChoice('toolDuringSession', 'yes', '允许')}${permissionChoice('toolDuringSession', 'no', '不允许')}</div>
+        </div>
+        <div class="permission-question">
+          <div><b>允许记录匿名“是 / 否 / 未知”判断吗？</b><small>不包含真实名称、关联ID、时间、版本或日志正文。</small></div>
+          <div class="choice-group">${permissionChoice('anonymousJudgement', 'yes', '允许匿名判断')}${permissionChoice('anonymousJudgement', 'no', '完全不记录')}</div>
+        </div>
+        <div class="locked-grid">
+          ${['真实名称与标识', '复制客户文字', '会话持久化', '文件导入', '报告导出', '屏幕采集'].map(label => `<div><span>×</span><b>${label}</b><small>MVP强制关闭</small></div>`).join('')}
+        </div>
+      </div>
+
+      <aside class="panel mode-preview ${ready ? 'ready' : ''}">
+        <span class="preview-label">当前建议模式</span>
+        <strong>${ready ? preview.id : '—'}</strong>
+        <h3>${ready ? preview.name : '等待权限确认'}</h3>
+        <p>${ready ? preview.description : '请选择上方两个问题，星图将采用能够满足限制的最严格模式。'}</p>
+        ${ready && state.permissions.toolDuringSession === 'no' ? '<div class="warning-note">现场期间不得打开本页面，请在远程连接前阅读导航。</div>' : ''}
+        <button class="primary-button" type="button" data-confirm-preflight ${ready ? '' : 'disabled'}>确认边界并继续 <span>→</span></button>
+      </aside>
+    </section>
+  </main>`;
+}
+
+function renderSymptom() {
+  const mode = currentMode();
+  return `<main class="page symptom-page">
+    <div class="page-heading">
+      <div><span class="eyebrow">${mode.id} · ${mode.name}</span><h1>这次要定界什么问题？</h1><p>这里只选择通用故障类型，不输入任何客户事实。</p></div>
+      <button class="text-button" type="button" data-reset-session>← 重新确认权限</button>
+    </div>
+    ${state.permissions.toolDuringSession === 'no' ? '<div class="policy-banner danger"><b>现场禁止打开工具</b><span>请在进入远程会话前阅读生成的通用路线，然后关闭本页面。</span></div>' : `<div class="policy-banner"><b>${mode.id}安全边界已锁定</b><span>${mode.description}</span></div>`}
+    <div class="symptom-grid">
+      ${SYMPTOMS.map(item => `<button class="symptom-card" type="button" data-symptom="${item.id}"><span class="symptom-icon">${item.icon}</span><span class="symptom-order">${String(SYMPTOMS.indexOf(item) + 1).padStart(2, '0')}</span><h2>${item.title}</h2><p>${item.summary}</p><i>选择此症状 →</i></button>`).join('')}
+    </div>
+  </main>`;
+}
+
+function renderGuide(compact = false) {
+  const symptom = currentSymptom();
+  const steps = GUIDE_STEPS[symptom.id];
+  const activeIndex = Math.min(state.guideIndex, steps.length - 1);
+  return `<section class="guide-panel${compact ? ' compact' : ''}">
+    <div class="guide-head">
+      <div><span class="eyebrow">零数据核验路线</span><h2>${symptom.title}</h2></div>
+      <span>${activeIndex + 1} / ${steps.length}</span>
+    </div>
+    <div class="guide-progress"><i style="width:${Math.round((activeIndex + 1) / steps.length * 100)}%"></i></div>
+    <div class="guide-steps">
+      ${steps.map(([category, title, detail], index) => `<article class="guide-step${index === activeIndex ? ' active' : ''}${index < activeIndex ? ' passed' : ''}">
+        <span class="step-dot ${CATEGORY_META[category].color}">${index < activeIndex ? '✓' : index + 1}</span>
+        <div><small>${CATEGORY_META[category].label}</small><h3>${title}</h3><p>${detail}</p>${index === activeIndex ? '<em>只在客户已有平台中核验，不在本页记录结果。</em>' : ''}</div>
+      </article>`).join('')}
+    </div>
+    <div class="guide-actions">
+      <button class="secondary-button" type="button" data-guide-prev ${activeIndex === 0 ? 'disabled' : ''}>← 上一步</button>
+      ${activeIndex < steps.length - 1 ? '<button class="primary-button" type="button" data-guide-next>下一项核验 <span>→</span></button>' : '<span class="guide-finished">通用路线已阅读；星图没有记录任何现场结论。</span>'}
+    </div>
+  </section>`;
+}
+
+function renderL0Workspace() {
+  return `<div class="workspace-grid l0-grid">
+    ${renderGuide()}
+    <aside class="panel boundary-card">
+      <span class="eyebrow">L0 BOUNDARY</span>
+      <h2>本页不知道现场发生了什么</h2>
+      <p>所有步骤都只是通用核验建议。没有证据被输入，也不会生成候选评分。</p>
+      <ul><li>不建立匿名对象</li><li>不记录“是/否”判断</li><li>不输出现场结论</li><li>关闭或刷新后回到初始状态</li></ul>
+      ${state.permissions.toolDuringSession === 'no' ? '<div class="warning-note">开始远程控制前，请结束会话并关闭此页面。</div>' : ''}
+    </aside>
+  </div>`;
+}
+
+function objectCountCard(type, title, items, limit) {
+  const canAdd = items.length < limit;
+  return `<section class="object-group">
+    <div class="object-group-head"><div><span>${type}</span><h3>${title}</h3></div><button type="button" data-add-object="${type}" ${canAdd ? '' : 'disabled'}>＋ 添加</button></div>
+    <div class="object-chips">${items.map(item => `<span>${item.id}</span>`).join('')}</div>
+    <small>${items.length} / ${limit} · 仅匿名编号</small>
+  </section>`;
+}
+
+function optionsFor(items, selected) {
+  return items.map(item => `<option value="${item.id}" ${item.id === selected ? 'selected' : ''}>${item.id}</option>`).join('');
+}
+
+function renderAnonymousMap() {
+  const { products, services, nodes, relations } = state.objects;
+  return `<div class="map-layout">
+    <section class="panel anonymous-map-panel">
+      <div class="panel-heading"><div><span class="section-index">A</span><h2>匿名关系图</h2></div><p>对应关系只保留在你的记忆或客户允许的介质中。</p></div>
+      <div class="anonymous-flow">
+        ${services.map((service, index) => {
+          const nextService = services[index + 1];
+          const hasForwardRelation = nextService && relations.some(relation => relation.source === service.id && relation.target === nextService.id);
+          return `<div class="service-orb-wrap"><button class="service-orb${state.activeSubject === service.id ? ' active' : ''}" type="button" data-active-subject="${service.id}"><span>${service.id}</span><small>${service.productId} · ${service.nodeId}</small></button>${nextService ? `<i class="flow-line${hasForwardRelation ? '' : ' unconfirmed'}">${hasForwardRelation ? '→' : '···'}</i>` : ''}</div>`;
+        }).join('')}
+      </div>
+      <div class="relations-list">
+        <div class="relations-title"><b>已确认的调用或依赖方向</b><small>方向不确定时不要添加</small></div>
+        ${relations.length ? relations.map((relation, index) => `<div class="relation-row"><span>${relation.source}</span><i>→</i><span>${relation.target}</span><button type="button" data-remove-relation="${index}" aria-label="移除关系">×</button></div>`).join('') : '<div class="empty-inline">尚未确认匿名关系</div>'}
+        <form id="relationForm" class="relation-form">
+          <select name="source" aria-label="关系起点">${optionsFor(services, services[0]?.id)}</select><span>→</span><select name="target" aria-label="关系终点">${optionsFor(services, services[1]?.id || services[0]?.id)}</select><button type="submit">添加关系</button>
+        </form>
+      </div>
+    </section>
+    <aside class="object-sidebar">
+      ${objectCountCard('product', '匿名产品', products, 4)}
+      ${objectCountCard('service', '匿名服务', services, 9)}
+      ${objectCountCard('node', '匿名节点', nodes, 5)}
+    </aside>
+    <section class="panel assignment-panel">
+      <div class="panel-heading"><div><span class="section-index">B</span><h2>匿名归属</h2></div><p>只选择编号，不录入真实名称。</p></div>
+      <div class="assignment-grid">${services.map(service => `<div class="assignment-row"><b>${service.id}</b><label>所属产品<select data-assign-service="${service.id}" data-field="productId">${optionsFor(products, service.productId)}</select></label><label>所在节点<select data-assign-service="${service.id}" data-field="nodeId">${optionsFor(nodes, service.nodeId)}</select></label></div>`).join('')}</div>
+    </section>
+  </div>`;
+}
+
+function evidenceAnswer(subjectId, evidenceId) {
+  return state.evidence[subjectId]?.[evidenceId] || 'unknown';
+}
+
+function renderEvidenceBoard() {
+  const services = state.objects.services;
+  const progress = evidenceProgress(services, state.evidence);
+  if (!services.some(service => service.id === state.activeSubject)) state.activeSubject = services[0]?.id || '';
+  return `<div class="evidence-layout">
+    <section class="evidence-toolbar panel">
+      <div><span class="eyebrow">当前核验对象</span><div class="subject-tabs">${services.map(service => `<button type="button" class="${service.id === state.activeSubject ? 'active' : ''}" data-active-subject="${service.id}">${service.id}</button>`).join('')}</div></div>
+      <div class="evidence-progress"><b>${progress.percent}%</b><span>结构化判断已处理</span><small>${progress.answered} 项已确认/排除/无权限 · ${progress.forbidden} 项无权限</small></div>
+    </section>
+    <div class="evidence-columns">
+      ${Object.entries(CATEGORY_META).map(([category, meta]) => {
+        const definitions = EVIDENCE_DEFINITIONS.filter(item => item.category === category);
+        return `<section class="evidence-category panel"><div class="category-head"><span class="category-dot ${meta.color}"></span><div><h2>${meta.label}</h2><small>类别最高 +${meta.cap} 分</small></div></div><div class="evidence-cards">${definitions.map(definition => {
+          const answer = evidenceAnswer(state.activeSubject, definition.id);
+          return `<article class="evidence-card"><div class="evidence-title"><div><h3>${definition.title}</h3><p>${definition.detail}</p></div><span>${definition.points > 0 ? `+${definition.points}` : '线索'}</span></div><div class="result-options">${RESULT_OPTIONS.map(option => `<button type="button" class="${answer === option.id ? `selected ${option.tone}` : ''}" data-evidence="${definition.id}" data-result="${option.id}">${option.label}</button>`).join('')}</div></article>`;
+        }).join('')}</div></section>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function confidenceLabel(value) {
+  return value === 'high' ? '高' : value === 'medium' ? '中' : '低';
+}
+
+function renderCandidate(candidate, index) {
+  return `<article class="candidate-card confidence-${candidate.confidence}">
+    <div class="candidate-rank"><span>TOP ${index + 1}</span><b>${candidate.subjectAlias}</b><small>匿名服务</small></div>
+    <div class="candidate-score"><strong>${candidate.score}</strong><span>/ 100</span><em>${confidenceLabel(candidate.confidence)}可信</em></div>
+    <div class="candidate-body">
+      <div class="source-tags">${candidate.evidenceSources.map(source => `<span class="${CATEGORY_META[source].color}">${CATEGORY_META[source].label}</span>`).join('')}${candidate.propagation ? '<span class="muted">受下游影响线索</span>' : ''}</div>
+      <div class="reason-list">${candidate.reasons.map(reason => `<div><span>+${reason.points}</span><p><b>${reason.title}</b><small>${reason.detail}</small></p></div>`).join('')}</div>
+      ${candidate.incompleteTrace ? '<div class="candidate-warning">链路完整度不足，不能仅凭当前评分提高可信度。</div>' : ''}
+    </div>
+  </article>`;
+}
+
+function renderResults() {
+  const candidates = scoreCandidates(state.objects.services, state.evidence);
+  const top = candidates[0];
+  const gaps = missingEvidence(top);
+  const nextCategory = gaps[0];
+  return `<div class="results-layout">
+    <section class="results-main">
+      <div class="results-heading"><div><span class="eyebrow">基于匿名人工判断</span><h2>可疑点排序</h2><p>星图没有读取原始数据；分数只用于安排下一步核验顺序。</p></div><span class="manual-badge">人工确认 · 非自动结论</span></div>
+      ${candidates.length ? `<div class="candidate-list">${candidates.map(renderCandidate).join('')}</div>` : `<div class="empty-results"><span>◎</span><h3>还没有形成候选点</h3><p>正常对象不会为了凑满Top 3进入列表。请先在“证据棋盘”确认至少一项正向证据。</p><button type="button" class="primary-button" data-workspace-tab="evidence">去核验证据 <span>→</span></button></div>`}
+    </section>
+    <aside class="results-side">
+      <section class="panel next-check"><span class="eyebrow">下一步最值得核验</span><h3>${nextCategory ? CATEGORY_META[nextCategory].label : '交叉复核'}</h3><p>${nextCategory ? CATEGORY_NEXT_CHECK[nextCategory] : '当前主要证据类型已覆盖，请回到原平台交叉复核最早失败点和直接上下游。'}</p><button type="button" data-workspace-tab="evidence">返回证据棋盘 →</button></section>
+      <section class="panel evidence-gaps"><h3>关键证据缺口</h3>${gaps.length ? `<ul>${gaps.map(category => `<li><span class="category-dot ${CATEGORY_META[category].color}"></span>${CATEGORY_META[category].label}<b>未形成独立证据</b></li>`).join('')}</ul>` : '<div class="all-covered">五类证据均已有确认项</div>'}</section>
+      <section class="disclaimer-card"><b>边界声明</b><p>本结果来自匿名人工选择，不包含现场原始证据，不代表已经完成事实复核。</p></section>
+    </aside>
+  </div>`;
+}
+
+function renderL1Workspace() {
+  const tabs = [
+    ['map', '匿名链路'],
+    ['evidence', '证据棋盘'],
+    ['results', '定界结果']
+  ];
+  const content = state.workspaceTab === 'map' ? renderAnonymousMap() : state.workspaceTab === 'evidence' ? renderEvidenceBoard() : renderResults();
+  return `<div class="workspace-tabs">${tabs.map(([id, label], index) => `<button type="button" data-workspace-tab="${id}" class="${state.workspaceTab === id ? 'active' : ''}"><span>0${index + 1}</span>${label}${id === 'results' ? `<i>${scoreCandidates(state.objects.services, state.evidence).length}</i>` : ''}</button>`).join('')}</div>${content}`;
+}
+
+function renderWorkspace() {
+  const symptom = currentSymptom();
+  return `<main class="page workspace-page">
+    <div class="workspace-heading">
+      <div><button class="back-link" type="button" data-back-symptom>← 更换症状</button><span class="symptom-mini">${symptom.icon}</span><div><small>当前症状</small><h1>${symptom.title}</h1></div></div>
+      <div class="workspace-actions">${state.mode === 'L1' ? '<button class="secondary-button" type="button" data-switch-l0>切换为L0零数据</button>' : ''}<span>${currentMode().description}</span></div>
+    </div>
+    ${state.mode === 'L0' ? renderL0Workspace() : renderL1Workspace()}
+  </main>`;
+}
+
+function renderModal() {
+  if (!state.modal) return '';
+  if (state.modal === 'end') return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="endTitle"><span class="modal-icon">×</span><h2 id="endTitle">结束并清空本次会话？</h2><p>匿名对象、判断项和可疑点将立即从页面内存中清除，无法恢复。</p><div><button class="secondary-button" type="button" data-close-modal>继续排障</button><button class="danger-button" type="button" data-confirm-end>清空并结束</button></div></section></div>`;
+  if (state.modal === 'switch-l0') return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="switchTitle"><span class="modal-icon safe">L0</span><h2 id="switchTitle">切换到零数据模式？</h2><p>所有匿名对象和证据判断都会清空，只保留当前症状的通用排障路线。</p><div><button class="secondary-button" type="button" data-close-modal>取消</button><button class="primary-button" type="button" data-confirm-l0>清空并切换</button></div></section></div>`;
+  return '';
+}
+
+function render() {
+  const content = state.stage === 'preflight' ? renderPreflight() : state.stage === 'symptom' ? renderSymptom() : renderWorkspace();
+  app.innerHTML = `${renderHeader()}${renderSecurityStrip()}${renderStepRail()}${content}<footer><span>星图保密现场模式</span><p>不连接 · 不采集 · 不持久化 · 不替代客户审批</p></footer>${renderModal()}`;
+}
+
+function addObject(type) {
+  if (type === 'product' && state.objects.products.length < 4) {
+    state.objects.products.push({ id: `P${state.objects.products.length + 1}` });
+  }
+  if (type === 'node' && state.objects.nodes.length < 5) {
+    state.objects.nodes.push({ id: `N${state.objects.nodes.length + 1}` });
+  }
+  if (type === 'service' && state.objects.services.length < 9) {
+    const id = `S${state.objects.services.length + 1}`;
+    state.objects.services.push({ id, productId: state.objects.products[0].id, nodeId: state.objects.nodes[0].id });
+    state.activeSubject = id;
+  }
+  render();
+}
+
+app.addEventListener('click', event => {
+  const button = event.target.closest('button');
+  if (!button) return;
+
+  if (button.dataset.permission) {
+    state.permissions[button.dataset.permission] = button.dataset.value;
+    return render();
+  }
+  if (button.hasAttribute('data-confirm-preflight') && permissionReady()) {
+    state.mode = deriveMode(state.permissions).id;
+    state.stage = 'symptom';
+    return render();
+  }
+  if (button.dataset.symptom) {
+    state.symptomId = button.dataset.symptom;
+    state.stage = 'workspace';
+    state.workspaceTab = state.mode === 'L1' ? 'map' : 'guide';
+    state.guideIndex = 0;
+    return render();
+  }
+  if (button.hasAttribute('data-reset-session')) {
+    state = freshState();
+    return render();
+  }
+  if (button.hasAttribute('data-back-symptom')) {
+    state.stage = 'symptom';
+    state.symptomId = '';
+    state.objects = createInitialObjects();
+    state.evidence = {};
+    state.activeSubject = 'S1';
+    return render();
+  }
+  if (button.dataset.workspaceTab) {
+    state.workspaceTab = button.dataset.workspaceTab;
+    return render();
+  }
+  if (button.dataset.addObject) return addObject(button.dataset.addObject);
+  if (button.dataset.activeSubject) {
+    state.activeSubject = button.dataset.activeSubject;
+    if (state.workspaceTab === 'map' && button.classList.contains('service-orb')) state.workspaceTab = 'evidence';
+    return render();
+  }
+  if (button.dataset.removeRelation !== undefined) {
+    state.objects.relations.splice(Number(button.dataset.removeRelation), 1);
+    return render();
+  }
+  if (button.dataset.evidence) {
+    if (!state.evidence[state.activeSubject]) state.evidence[state.activeSubject] = {};
+    state.evidence[state.activeSubject][button.dataset.evidence] = button.dataset.result;
+    return render();
+  }
+  if (button.hasAttribute('data-guide-next')) {
+    state.guideIndex += 1;
+    return render();
+  }
+  if (button.hasAttribute('data-guide-prev')) {
+    state.guideIndex = Math.max(0, state.guideIndex - 1);
+    return render();
+  }
+  if (button.hasAttribute('data-open-end')) {
+    state.modal = 'end';
+    return render();
+  }
+  if (button.hasAttribute('data-switch-l0')) {
+    state.modal = 'switch-l0';
+    return render();
+  }
+  if (button.hasAttribute('data-close-modal')) {
+    state.modal = null;
+    return render();
+  }
+  if (button.hasAttribute('data-confirm-end')) {
+    state = freshState();
+    return render();
+  }
+  if (button.hasAttribute('data-confirm-l0')) {
+    state.mode = 'L0';
+    state.objects = createInitialObjects();
+    state.evidence = {};
+    state.activeSubject = 'S1';
+    state.guideIndex = 0;
+    state.modal = null;
+    return render();
+  }
+});
+
+app.addEventListener('change', event => {
+  const select = event.target.closest('select[data-assign-service]');
+  if (!select) return;
+  const service = state.objects.services.find(item => item.id === select.dataset.assignService);
+  if (!service || !['productId', 'nodeId'].includes(select.dataset.field)) return;
+  service[select.dataset.field] = select.value;
+  render();
+});
+
+app.addEventListener('submit', event => {
+  if (event.target.id !== 'relationForm') return;
+  event.preventDefault();
+  const data = new FormData(event.target);
+  const source = String(data.get('source') || '');
+  const target = String(data.get('target') || '');
+  const serviceIds = new Set(state.objects.services.map(service => service.id));
+  if (!serviceIds.has(source) || !serviceIds.has(target) || source === target) return;
+  if (!state.objects.relations.some(relation => relation.source === source && relation.target === target)) state.objects.relations.push({ source, target });
+  render();
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || !state.modal) return;
+  state.modal = null;
+  render();
+});
+
+render();
+
+window.XINGTU_CONFIDENTIAL = {
+  version: '1.0.0',
+  get stage() { return state.stage; },
+  get mode() { return state.mode; }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+name: xingtu-ci
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - jenkins-home:/var/jenkins_home
+    restart: unless-stopped
+  agent:
+    profiles: [build]
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      JENKINS_URL: http://jenkins:8080/
+      JENKINS_AGENT_NAME: xingtu-build
+      JENKINS_AGENT_WORKDIR: /home/jenkins/agent
+      JENKINS_WEB_SOCKET: "true"
+      JENKINS_SECRET: ${JENKINS_AGENT_SECRET:-}
+    volumes:
+      - jenkins-work:/home/jenkins/agent
+    restart: unless-stopped
+volumes:
+  jenkins-home:
+  jenkins-work:

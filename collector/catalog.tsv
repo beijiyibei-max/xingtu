@@ -1,0 +1,25 @@
+redis-ha	Redis 高可用（哨兵）	*/redis-replication*/3,*/redis-sentinel*/3,*/redis-operator/1	global.redis.sentinel=true
+redis-single	Redis 单实例	*/redis-standalone*/1	global.redis.sentinel=false
+platform-ha	平台高可用副本（replicaHighCount）	-	global.replicaHighCount>=2
+ai-capability	AI / 多模态能力	*/aiworks*/1	global.ai_switch=true,global.feature.ai=true
+s3-backend	对象存储后端（minio / rustfs / oss）	*/minio*/1	global.s3.type+
+es-cluster	Elasticsearch 多节点	*/es-cluster*/2	-
+kafka-ha	Kafka 多副本	*/kafka/3	-
+mysql-ha	MySQL 主从	*/mysql/2	-
+nacos-cluster	Nacos 集群	*/nacos/3	-
+starrocks	StarRocks（OLAP）	*/kube-starrocks-fe*/1,*/kube-starrocks-be*/1	-
+csi-s3	S3 存储卷（csi-s3）	*/csi-s3-provisioner/1	-
+task-operators	任务引擎 Operator（Ray / Flink / Spark）	*/ray-operator*/1,*/flink-operator*/1,*/spark-operator*/1	-
+gpu-sharing	GPU 切分（HAMi）	*/hami-scheduler/1	-
+gravitino	数据目录（Gravitino）	*/gravitino/1	-
+cert-manager	证书管理（cert-manager）	*/cert-manager/1,*/cert-manager-cainjector/1,*/cert-manager-webhook/1	-
+zookeeper-ha	ZooKeeper 集群	*/zookeeper/3	-
+postgresql-ha	PostgreSQL	*/postgresql/2	-
+minio-distributed	MinIO 分布式	*/minio/4	-
+registry	镜像仓库	*/registry*/1	-
+ingress-entry	入口与 TLS	*/ingress-nginx*/1,*/cert-manager/1	global.domain+,global.ssl_tls_secret_name+
+monitoring	监控与告警	*/prometheus*/1,*/grafana*/1	-
+logging-pipeline	日志采集链路	*/fluent*/1	-
+plugin-distribution	插件分发	-	global.plugin.jobCount>=1
+backup	备份能力	-	-
+resource-limits	资源配额与 OOM 防护	-	-

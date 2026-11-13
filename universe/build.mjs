@@ -1,0 +1,40 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {dirname,join,resolve} from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+const here=dirname(fileURLToPath(import.meta.url)),old=resolve(here,'../legacy/immersive'),out=resolve(here,'../build');
+const {build}=await import(pathToFileURL(join(old,'node_modules/esbuild/lib/main.js')));
+await mkdir(out,{recursive:true});
+let main=await readFile(join(old,'src/main.js'),'utf8');
+const replace=(a,b)=>{if(!main.includes(a))throw Error('三维整合位置变化：'+a.slice(0,70));main=main.replace(a,b);};
+replace("import ForceGraph3D from '3d-force-graph';",`import ForceGraph3D from '3d-force-graph';\nimport {initK8s7} from ${JSON.stringify(join(here,'k8s-ui.js').replaceAll('\\','/'))};\nlet k8s7, sceneRequest=0;`);
+replace("  conflict: '冲突关系'","  selector: 'Service 选择器关联',\n  conflict: '冲突关系'");
+replace("  conflict: '#ff647c'","  selector: '#b49aff',\n  conflict: '#ff647c'");
+const begin=main.indexOf('let k8sNamespaces = [];'),end=main.indexOf('async function loadKnowledgeData(',begin);
+if(begin<0||end<0)throw Error('缺少旧 K8s 接口区段');
+main=main.slice(0,begin)+`function ensureScopeButton(){}\nfunction updateScopeButton(){}\nfunction loadK8sData(){ k8s7.openKnowledge(); }\n`+main.slice(end);
+replace('function renderNodeDetails(node) {','function renderNodeDetails(node) {\n  if (DATA.mode === "k8s" && k8s7) { k8s7.renderNode(node); return; }');
+replace('function renderDefaultDetails() {','function renderDefaultDetails() {\n  if (DATA.mode === "k8s" && k8s7) { k8s7.summary(); return; }');
+replace('  DATA = data;','  DATA = { ...data, mode };');
+replace('function applyData(data, mode) {',`function applyData(data, mode) {
+  if(mode==='k8s') { sceneRequest++; warpSequence++; els.warp.classList.remove('active','leaving'); els.warp.setAttribute('aria-hidden','true'); document.body.classList.remove('is-transitioning'); document.body.removeAttribute('aria-busy'); els.modeButtons.forEach(b=>b.disabled=false); els.sync.disabled=false; }
+`);
+replace('async function loadLiveData() {','async function loadLiveData() {\n  const sceneTicket=++sceneRequest;');
+replace("    if (!response.ok) throw new Error(payload.error?.message || `连接器返回 ${response.status}`);","    if(sceneTicket!==sceneRequest)return;\n    if (!response.ok) throw new Error(payload.error?.message || `连接器返回 ${response.status}`);");
+replace("    setDataStatus('error', 'EM 实况连接失败'","    if(sceneTicket!==sceneRequest)return;\n    setDataStatus('error', 'EM 实况连接失败'");
+replace('async function loadKnowledgeData(animateTransition = true) {','async function loadKnowledgeData(animateTransition = true) {\n  const sceneTicket=++sceneRequest;');
+replace("  applyData(KNOWLEDGE_DATA, 'knowledge');","  if(sceneTicket!==sceneRequest)return;\n  applyData(KNOWLEDGE_DATA, 'knowledge');");
+replace("  if (DATA.mode === 'k8s') {\n    playFocusTransition",`  if (DATA.mode === 'k8s') {\n    k8s7.renderPodName(node,moduleName); return;\n    playFocusTransition`);
+replace('function setFilterOptions(mode) {',`function setFilterOptions(mode) {\n  if (mode === 'k8s') { els.filter.innerHTML='<option value="all">全部已录入关系</option><option value="deploy">项目部署前置</option><option value="selector">Service 选择器关联</option>'; els.filter.value='all'; return; }`);
+replace('  currentMode = mode;','  currentMode = mode;\n  if(k8s7) k8s7.setVisible(mode === "k8s");');
+replace('const active = button.dataset.mode === mode;',`button.textContent=button.dataset.mode==='knowledge'?'知识图':mode==='k8s'?'现场快照':'实况图';\n    const active = mode==='k8s' ? button.dataset.mode === (DATA.meta?.view==='knowledge'?'knowledge':'live') : button.dataset.mode === mode;`);
+replace("mode === 'k8s' ? 'K8S LIVE'",`mode === 'k8s' ? (DATA.meta?.view==='knowledge'?'7.0 KNOWLEDGE':DATA.meta?.view==='demo'?'7.0 DEMO':'7.0 SNAPSHOT')`);
+replace("  if (currentMode === 'k8s') loadKnowledgeData();",`  if (currentMode === 'k8s') { if(button.dataset.mode==='knowledge') k8s7.openKnowledge(); else k8s7.openServer(); }`);
+replace("if (currentMode === 'k8s') loadK8sData();",`if (currentMode === 'k8s') k8s7.openServer();`);
+// Preserve 6.3 entry; 7.0 opens useful knowledge immediately, without needing a server snapshot.
+replace("if (seven && currentMode !== 'k8s') loadK8sData();",`if (seven) loadK8sData();`);
+replace('window.XINGTU_IMMERSIVE = {',`k8s7=initK8s7({apply:data=>applyData(data,'k8s'),status:setDataStatus,details:els.details,select:id=>selectNode(nodes.find(n=>n.id===id),true)});\nif(location.pathname==='/k8s'||new URLSearchParams(location.search).get('version')==='7.0') k8s7.openKnowledge();\nwindow.XINGTU_K8S7=k8s7;\nwindow.XINGTU_IMMERSIVE = {`);
+const result=await build({stdin:{contents:main,resolveDir:join(old,'src'),sourcefile:'main-v33-k8s.js'},bundle:true,minify:true,format:'iife',platform:'browser',target:['es2020'],write:false,legalComments:'none'});
+const template=await readFile(join(old,'src/template.html'),'utf8'),style=await readFile(join(old,'src/styles.css'),'utf8')+'\n'+await readFile(join(here,'k8s.css'),'utf8');
+const encoded=Buffer.from(result.outputFiles[0].contents).toString('base64'),loader=`(()=>{const bytes=Uint8Array.from(atob('${encoded}'),c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(bytes));})();`;
+const html=template.replace('/*__STYLES__*/',style).replace('/*__SCRIPT__*/',loader).replace('组件关系宇宙 · V1.5.0','组件关系宇宙 · V3.3.7');
+await writeFile(join(out,'universe.html'),html);

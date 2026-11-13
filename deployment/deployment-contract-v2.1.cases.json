@@ -1,0 +1,1155 @@
+{
+  "description": "base 选择独立样例，select 和 edits 使用 JSON Pointer。valid 是 Draft 2020-12 校验预期。",
+  "cases": [
+    {"id":"root-order","definition":null,"base":"order","valid":true,"edits":[]},
+    {"id":"root-manifest","definition":null,"base":"manifest","valid":true,"edits":[]},
+    {"id":"root-evidence","definition":null,"base":"evidence","valid":true,"edits":[]},
+    {"id":"ask-request","definition":"askRequest","base":"ask-request","valid":true,"edits":[]},
+    {"id":"ask-answer","definition":"askResponse","base":"ask-response","valid":true,"edits":[]},
+    {
+      "id": "terminal-with-instruction",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/0/commands/0",
+      "valid": false,
+      "edits": [["set","/instructionRef","fixture-instruction"]]
+    },
+    {
+      "id": "em-with-argv",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/2/commands/0",
+      "valid": false,
+      "edits": [["set","/argv",["kubectl"]]]
+    },
+    {
+      "id": "terminal-without-shell",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/0/commands/0",
+      "valid": false,
+      "edits": [["remove","/target/shell"]]
+    },
+    {
+      "id": "secret-ref-missing",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/0/commands/0",
+      "valid": false,
+      "edits": [["set","/credentialMode","secretRef"]]
+    },
+    {
+      "id": "secret-ref",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/0/commands/0",
+      "valid": true,
+      "edits": [["set","/credentialMode","secretRef"],["set","/credentialRef","fixture-registry"]]
+    },
+    {
+      "id": "unexpected-secret-ref",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/0/commands/0",
+      "valid": false,
+      "edits": [["set","/credentialRef","fixture-registry"]]
+    },
+    {
+      "id": "template-hash-missing",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/0/commands/0",
+      "valid": false,
+      "edits": [["remove","/templateHash"]]
+    },
+    {
+      "id": "retry-without-reason",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/0/commands/0",
+      "valid": false,
+      "edits": [["set","/retry/maxAttempts",2],["set","/retry/backoffSeconds",5]]
+    },
+    {
+      "id": "read-only-retry",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/0/commands/0",
+      "valid": true,
+      "edits": [["set","/retry",{"maxAttempts":3,"backoffSeconds":5,"retryOn":["timeout"]}]]
+    },
+    {
+      "id": "manual-recovery-cannot-retry",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/4/commands/0",
+      "valid": false,
+      "edits": [["set","/retry",{"maxAttempts":2,"backoffSeconds":5,"retryOn":["timeout"]}]]
+    },
+    {
+      "id": "ready-without-gate",
+      "definition": "step",
+      "base": "order",
+      "select": "/steps/4",
+      "valid": false,
+      "edits": [["set","/risk","destructive"],["set","/status","ready"]]
+    },
+    {
+      "id": "ready-with-gate",
+      "definition": "step",
+      "base": "order",
+      "select": "/steps/4",
+      "valid": true,
+      "edits": [
+        ["set","/status","ready"],
+        [
+          "set",
+          "/gate",
+          {
+            "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "approvalRef": "fixture-approval",
+            "reviewerId": "fixture-reviewer",
+            "backupRefs": ["fixture-backup"],
+            "rollbackPointRef": "fixture-rollback-point",
+            "rollbackId": "fixture-disk-restore",
+            "approvedAt": "2026-11-12T02:00:00Z",
+            "expiresAt": "2026-11-12T03:00:00Z",
+            "backupDecision": "required"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "destructive-without-rollback",
+      "definition": "command",
+      "base": "order",
+      "select": "/steps/4/commands/0",
+      "valid": false,
+      "edits": [["set","/risk","destructive"],["remove","/rollbackId"]]
+    },
+    {
+      "id": "required-backup",
+      "definition": "gate",
+      "data": {
+        "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "approvalRef": "fixture-approval",
+        "reviewerId": "fixture-reviewer",
+        "backupRefs": ["fixture-backup"],
+        "rollbackPointRef": "fixture-rollback-point",
+        "rollbackId": "fixture-disk-restore",
+        "approvedAt": "2026-11-12T02:00:00Z",
+        "expiresAt": "2026-11-12T03:00:00Z",
+        "backupDecision": "required"
+      },
+      "valid": true,
+      "edits": []
+    },
+    {
+      "id": "required-backup-missing",
+      "definition": "gate",
+      "data": {
+        "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "approvalRef": "fixture-approval",
+        "reviewerId": "fixture-reviewer",
+        "backupRefs": ["fixture-backup"],
+        "rollbackPointRef": "fixture-rollback-point",
+        "rollbackId": "fixture-disk-restore",
+        "approvedAt": "2026-11-12T02:00:00Z",
+        "expiresAt": "2026-11-12T03:00:00Z",
+        "backupDecision": "required"
+      },
+      "valid": false,
+      "edits": [["set","/backupRefs",[]]]
+    },
+    {
+      "id": "backup-not-applicable",
+      "definition": "gate",
+      "data": {
+        "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "approvalRef": "fixture-approval",
+        "reviewerId": "fixture-reviewer",
+        "backupRefs": ["fixture-backup"],
+        "rollbackPointRef": "fixture-rollback-point",
+        "rollbackId": "fixture-disk-restore",
+        "approvedAt": "2026-11-12T02:00:00Z",
+        "expiresAt": "2026-11-12T03:00:00Z",
+        "backupDecision": "required"
+      },
+      "valid": true,
+      "edits": [
+        ["set","/backupDecision","not-applicable"],
+        ["set","/backupRefs",[]],
+        ["set","/backupNotApplicableReason","操作只影响新建对象，批准记录确认无既有数据。"]
+      ]
+    },
+    {
+      "id": "backup-not-applicable-no-reason",
+      "definition": "gate",
+      "data": {
+        "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "approvalRef": "fixture-approval",
+        "reviewerId": "fixture-reviewer",
+        "backupRefs": ["fixture-backup"],
+        "rollbackPointRef": "fixture-rollback-point",
+        "rollbackId": "fixture-disk-restore",
+        "approvedAt": "2026-11-12T02:00:00Z",
+        "expiresAt": "2026-11-12T03:00:00Z",
+        "backupDecision": "required"
+      },
+      "valid": false,
+      "edits": [["set","/backupDecision","not-applicable"],["set","/backupRefs",[]]]
+    },
+    {
+      "id": "passed-without-required-check",
+      "definition": "step",
+      "base": "order",
+      "select": "/steps/0",
+      "valid": false,
+      "edits": [["set","/checks/0/required",false]]
+    },
+    {
+      "id": "passed-without-evidence",
+      "definition": "step",
+      "base": "order",
+      "select": "/steps/0",
+      "valid": false,
+      "edits": [["set","/evidenceIds",[]]]
+    },
+    {
+      "id": "blocked-without-reason",
+      "definition": "step",
+      "base": "order",
+      "select": "/steps/4",
+      "valid": false,
+      "edits": [["remove","/reasonCode"]]
+    },
+    {
+      "id": "screenshot-missing",
+      "definition": "record",
+      "base": "evidence",
+      "select": "/records/0",
+      "valid": false,
+      "edits": [["set","/evidenceType","screenshot-ref"]]
+    },
+    {
+      "id": "screenshot-reviewed",
+      "definition": "record",
+      "base": "evidence",
+      "select": "/records/0",
+      "valid": true,
+      "edits": [
+        ["set","/evidenceType","screenshot-ref"],
+        [
+          "set",
+          "/screenshot",
+          {
+            "ref": "fixture-image",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "redactionReviewed": true
+          }
+        ]
+      ]
+    },
+    {
+      "id": "screenshot-not-reviewed",
+      "definition": "record",
+      "base": "evidence",
+      "select": "/records/0",
+      "valid": false,
+      "edits": [
+        ["set","/evidenceType","screenshot-ref"],
+        [
+          "set",
+          "/screenshot",
+          {
+            "ref": "fixture-image",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "redactionReviewed": false
+          }
+        ]
+      ]
+    },
+    {
+      "id": "pass-without-facts",
+      "definition": "record",
+      "base": "evidence",
+      "select": "/records/0",
+      "valid": false,
+      "edits": [["set","/facts",[]]]
+    },
+    {
+      "id": "nonpass-without-reason",
+      "definition": "record",
+      "base": "evidence",
+      "select": "/records/0",
+      "valid": false,
+      "edits": [["set","/result","unknown"]]
+    },
+    {
+      "id": "forbidden-with-reason",
+      "definition": "record",
+      "base": "evidence",
+      "select": "/records/0",
+      "valid": true,
+      "edits": [["set","/result","forbidden"],["set","/facts",[]],["set","/reasonCode","permission"]]
+    },
+    {
+      "id": "numeric-fact-without-unit",
+      "definition": "record",
+      "base": "evidence",
+      "select": "/records/0",
+      "valid": false,
+      "edits": [["remove","/facts/0/unit"]]
+    },
+    {
+      "id": "numeric-expectation-without-unit",
+      "definition": "check",
+      "base": "order",
+      "select": "/steps/0/checks/0",
+      "valid": false,
+      "edits": [["remove","/expectations/0/unit"]]
+    },
+    {
+      "id": "numeric-comparator-on-string",
+      "definition": "check",
+      "base": "order",
+      "select": "/steps/0/checks/0",
+      "valid": false,
+      "edits": [["set","/expectations/0",{"fact":"example","operator":"gte","value":"100"}]]
+    },
+    {
+      "id": "probe-without-command",
+      "definition": "check",
+      "base": "order",
+      "select": "/steps/0/checks/0",
+      "valid": false,
+      "edits": [["remove","/commandId"]]
+    },
+    {
+      "id": "probe-without-evaluator",
+      "definition": "check",
+      "base": "order",
+      "select": "/steps/0/checks/0",
+      "valid": false,
+      "edits": [["remove","/evaluatorRef"]]
+    },
+    {
+      "id": "fixed-option-without-option-set",
+      "definition": "check",
+      "base": "order",
+      "select": "/steps/1/checks/0",
+      "valid": false,
+      "edits": [["remove","/optionSetRef"]]
+    },
+    {
+      "id": "conditional-without-condition",
+      "definition": "component",
+      "base": "order",
+      "select": "/components/3",
+      "valid": false,
+      "edits": [["remove","/conditionId"]]
+    },
+    {
+      "id": "chart-without-chart-id",
+      "definition": "component",
+      "base": "order",
+      "select": "/components/2",
+      "valid": false,
+      "edits": [["remove","/chartId"]]
+    },
+    {
+      "id": "image-only-without-image-ids",
+      "definition": "component",
+      "base": "order",
+      "select": "/components/1",
+      "valid": false,
+      "edits": [["set","/imageIds",[]]]
+    },
+    {
+      "id": "suggested-binding",
+      "definition": "binding",
+      "base": "order",
+      "select": "/steps/0/params/0",
+      "valid": true,
+      "edits": [["set","/status","suggested"]]
+    },
+    {
+      "id": "conflicting-binding-no-alternative",
+      "definition": "binding",
+      "base": "order",
+      "select": "/steps/0/params/0",
+      "valid": false,
+      "edits": [["set","/status","conflict"]]
+    },
+    {
+      "id": "conflicting-binding-with-alternative",
+      "definition": "binding",
+      "base": "order",
+      "select": "/steps/0/params/0",
+      "valid": true,
+      "edits": [
+        ["set","/status","conflict"],
+        [
+          "set",
+          "/alternatives",
+          [{"origin":"confirmed-evidence","originRef":"fixture-check","value":"different-context"}]
+        ]
+      ]
+    },
+    {
+      "id": "accepted-with-two-observations",
+      "definition": "handoverRecord",
+      "data": {
+        "projectId": "fixture-multimodal",
+        "planRevision": 1,
+        "versionLockId": "fixture-lock",
+        "disposition": "accepted",
+        "completedInstanceIds": ["fixture-ingress"],
+        "openIssues": [
+          {
+            "code": "image-check-pending",
+            "summary": "模拟仓库可拉取检查未完成。",
+            "ownerId": "fixture-operator",
+            "dueAt": "2026-11-12T04:00:00Z",
+            "blocking": true
+          }
+        ],
+        "rollbackPointRefs": [],
+        "contactRefs": ["fixture-contact"],
+        "observation": [
+          {
+            "afterHours": 2,
+            "dueAt": "2026-11-12T04:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-2"]
+          },
+          {
+            "afterHours": 24,
+            "dueAt": "2026-11-13T02:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-24"]
+          }
+        ],
+        "acceptance": {"customerRef":"fixture-customer","signoffRef":"fixture-signoff","acceptedAt":"2026-11-13T02:00:00Z"},
+        "observationStartedAt": "2026-11-12T02:00:00Z"
+      },
+      "valid": true,
+      "edits": []
+    },
+    {
+      "id": "accepted-without-signoff",
+      "definition": "handoverRecord",
+      "data": {
+        "projectId": "fixture-multimodal",
+        "planRevision": 1,
+        "versionLockId": "fixture-lock",
+        "disposition": "accepted",
+        "completedInstanceIds": ["fixture-ingress"],
+        "openIssues": [
+          {
+            "code": "image-check-pending",
+            "summary": "模拟仓库可拉取检查未完成。",
+            "ownerId": "fixture-operator",
+            "dueAt": "2026-11-12T04:00:00Z",
+            "blocking": true
+          }
+        ],
+        "rollbackPointRefs": [],
+        "contactRefs": ["fixture-contact"],
+        "observation": [
+          {
+            "afterHours": 2,
+            "dueAt": "2026-11-12T04:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-2"]
+          },
+          {
+            "afterHours": 24,
+            "dueAt": "2026-11-13T02:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-24"]
+          }
+        ],
+        "acceptance": {"customerRef":"fixture-customer","signoffRef":"fixture-signoff","acceptedAt":"2026-11-13T02:00:00Z"},
+        "observationStartedAt": "2026-11-12T02:00:00Z"
+      },
+      "valid": false,
+      "edits": [["remove","/acceptance"]]
+    },
+    {
+      "id": "accepted-without-observation-start",
+      "definition": "handoverRecord",
+      "data": {
+        "projectId": "fixture-multimodal",
+        "planRevision": 1,
+        "versionLockId": "fixture-lock",
+        "disposition": "accepted",
+        "completedInstanceIds": ["fixture-ingress"],
+        "openIssues": [
+          {
+            "code": "image-check-pending",
+            "summary": "模拟仓库可拉取检查未完成。",
+            "ownerId": "fixture-operator",
+            "dueAt": "2026-11-12T04:00:00Z",
+            "blocking": true
+          }
+        ],
+        "rollbackPointRefs": [],
+        "contactRefs": ["fixture-contact"],
+        "observation": [
+          {
+            "afterHours": 2,
+            "dueAt": "2026-11-12T04:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-2"]
+          },
+          {
+            "afterHours": 24,
+            "dueAt": "2026-11-13T02:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-24"]
+          }
+        ],
+        "acceptance": {"customerRef":"fixture-customer","signoffRef":"fixture-signoff","acceptedAt":"2026-11-13T02:00:00Z"},
+        "observationStartedAt": "2026-11-12T02:00:00Z"
+      },
+      "valid": false,
+      "edits": [["remove","/observationStartedAt"]]
+    },
+    {
+      "id": "accepted-with-one-observation",
+      "definition": "handoverRecord",
+      "data": {
+        "projectId": "fixture-multimodal",
+        "planRevision": 1,
+        "versionLockId": "fixture-lock",
+        "disposition": "accepted",
+        "completedInstanceIds": ["fixture-ingress"],
+        "openIssues": [
+          {
+            "code": "image-check-pending",
+            "summary": "模拟仓库可拉取检查未完成。",
+            "ownerId": "fixture-operator",
+            "dueAt": "2026-11-12T04:00:00Z",
+            "blocking": true
+          }
+        ],
+        "rollbackPointRefs": [],
+        "contactRefs": ["fixture-contact"],
+        "observation": [
+          {
+            "afterHours": 2,
+            "dueAt": "2026-11-12T04:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-2"]
+          },
+          {
+            "afterHours": 24,
+            "dueAt": "2026-11-13T02:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-24"]
+          }
+        ],
+        "acceptance": {"customerRef":"fixture-customer","signoffRef":"fixture-signoff","acceptedAt":"2026-11-13T02:00:00Z"},
+        "observationStartedAt": "2026-11-12T02:00:00Z"
+      },
+      "valid": false,
+      "edits": [
+        [
+          "set",
+          "/observation",
+          [
+            {
+              "afterHours": 2,
+              "dueAt": "2026-11-12T04:00:00Z",
+              "ownerId": "fixture-operator",
+              "recheckIds": ["ingress-ready"],
+              "status": "passed",
+              "evidenceIds": ["e-2"]
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "accepted-with-two-2h-points",
+      "definition": "handoverRecord",
+      "data": {
+        "projectId": "fixture-multimodal",
+        "planRevision": 1,
+        "versionLockId": "fixture-lock",
+        "disposition": "accepted",
+        "completedInstanceIds": ["fixture-ingress"],
+        "openIssues": [
+          {
+            "code": "image-check-pending",
+            "summary": "模拟仓库可拉取检查未完成。",
+            "ownerId": "fixture-operator",
+            "dueAt": "2026-11-12T04:00:00Z",
+            "blocking": true
+          }
+        ],
+        "rollbackPointRefs": [],
+        "contactRefs": ["fixture-contact"],
+        "observation": [
+          {
+            "afterHours": 2,
+            "dueAt": "2026-11-12T04:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-2"]
+          },
+          {
+            "afterHours": 24,
+            "dueAt": "2026-11-13T02:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-24"]
+          }
+        ],
+        "acceptance": {"customerRef":"fixture-customer","signoffRef":"fixture-signoff","acceptedAt":"2026-11-13T02:00:00Z"},
+        "observationStartedAt": "2026-11-12T02:00:00Z"
+      },
+      "valid": false,
+      "edits": [["set","/observation/1/afterHours",2]]
+    },
+    {
+      "id": "passed-observation-without-evidence",
+      "definition": "handoverRecord",
+      "data": {
+        "projectId": "fixture-multimodal",
+        "planRevision": 1,
+        "versionLockId": "fixture-lock",
+        "disposition": "accepted",
+        "completedInstanceIds": ["fixture-ingress"],
+        "openIssues": [
+          {
+            "code": "image-check-pending",
+            "summary": "模拟仓库可拉取检查未完成。",
+            "ownerId": "fixture-operator",
+            "dueAt": "2026-11-12T04:00:00Z",
+            "blocking": true
+          }
+        ],
+        "rollbackPointRefs": [],
+        "contactRefs": ["fixture-contact"],
+        "observation": [
+          {
+            "afterHours": 2,
+            "dueAt": "2026-11-12T04:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-2"]
+          },
+          {
+            "afterHours": 24,
+            "dueAt": "2026-11-13T02:00:00Z",
+            "ownerId": "fixture-operator",
+            "recheckIds": ["ingress-ready"],
+            "status": "passed",
+            "evidenceIds": ["e-24"]
+          }
+        ],
+        "acceptance": {"customerRef":"fixture-customer","signoffRef":"fixture-signoff","acceptedAt":"2026-11-13T02:00:00Z"},
+        "observationStartedAt": "2026-11-12T02:00:00Z"
+      },
+      "valid": false,
+      "edits": [["set","/observation/1/evidenceIds",[]]]
+    },
+    {
+      "id": "verified-version-lock",
+      "definition": "versionLock",
+      "data": {
+        "id": "fixture-lock",
+        "kubernetes": "fixture-k8s",
+        "sealos": "fixture-sealos",
+        "easyManager": "fixture-em",
+        "product": "fixture-product",
+        "packageIds": ["demo-package"],
+        "chartIds": ["ai-base","ai-addon"],
+        "imageIds": ["ai-runtime"],
+        "status": "verified",
+        "source": {
+          "file": "deployment-contract-v2.1.example.json",
+          "section": "模拟数据，示例值不可用于现场",
+          "verifiedAt": "2026-11-12T02:00:00Z",
+          "confidence": "verified",
+          "reproductions": 0
+        },
+        "verifiedBy": "fixture-reviewer",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "compatibility": [
+          {
+            "kubernetes": "fixture-k8s",
+            "sealos": "fixture-sealos",
+            "easyManager": "fixture-em",
+            "product": "fixture-product",
+            "chartIds": ["ai-base","ai-addon"],
+            "imageIds": ["ai-runtime"]
+          }
+        ],
+        "verificationRefs": [
+          {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "verified",
+            "reproductions": 0
+          }
+        ]
+      },
+      "valid": true,
+      "edits": []
+    },
+    {
+      "id": "verified-with-unverified-source",
+      "definition": "versionLock",
+      "data": {
+        "id": "fixture-lock",
+        "kubernetes": "fixture-k8s",
+        "sealos": "fixture-sealos",
+        "easyManager": "fixture-em",
+        "product": "fixture-product",
+        "packageIds": ["demo-package"],
+        "chartIds": ["ai-base","ai-addon"],
+        "imageIds": ["ai-runtime"],
+        "status": "verified",
+        "source": {
+          "file": "deployment-contract-v2.1.example.json",
+          "section": "模拟数据，示例值不可用于现场",
+          "verifiedAt": "2026-11-12T02:00:00Z",
+          "confidence": "verified",
+          "reproductions": 0
+        },
+        "verifiedBy": "fixture-reviewer",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "compatibility": [
+          {
+            "kubernetes": "fixture-k8s",
+            "sealos": "fixture-sealos",
+            "easyManager": "fixture-em",
+            "product": "fixture-product",
+            "chartIds": ["ai-base","ai-addon"],
+            "imageIds": ["ai-runtime"]
+          }
+        ],
+        "verificationRefs": [
+          {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "verified",
+            "reproductions": 0
+          }
+        ]
+      },
+      "valid": false,
+      "edits": [["set","/source/confidence","unverified"]]
+    },
+    {
+      "id": "verified-without-operator",
+      "definition": "versionLock",
+      "data": {
+        "id": "fixture-lock",
+        "kubernetes": "fixture-k8s",
+        "sealos": "fixture-sealos",
+        "easyManager": "fixture-em",
+        "product": "fixture-product",
+        "packageIds": ["demo-package"],
+        "chartIds": ["ai-base","ai-addon"],
+        "imageIds": ["ai-runtime"],
+        "status": "verified",
+        "source": {
+          "file": "deployment-contract-v2.1.example.json",
+          "section": "模拟数据，示例值不可用于现场",
+          "verifiedAt": "2026-11-12T02:00:00Z",
+          "confidence": "verified",
+          "reproductions": 0
+        },
+        "verifiedBy": "fixture-reviewer",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "compatibility": [
+          {
+            "kubernetes": "fixture-k8s",
+            "sealos": "fixture-sealos",
+            "easyManager": "fixture-em",
+            "product": "fixture-product",
+            "chartIds": ["ai-base","ai-addon"],
+            "imageIds": ["ai-runtime"]
+          }
+        ],
+        "verificationRefs": [
+          {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "verified",
+            "reproductions": 0
+          }
+        ]
+      },
+      "valid": false,
+      "edits": [["remove","/verifiedBy"]]
+    },
+    {
+      "id": "verified-without-compatibility",
+      "definition": "versionLock",
+      "data": {
+        "id": "fixture-lock",
+        "kubernetes": "fixture-k8s",
+        "sealos": "fixture-sealos",
+        "easyManager": "fixture-em",
+        "product": "fixture-product",
+        "packageIds": ["demo-package"],
+        "chartIds": ["ai-base","ai-addon"],
+        "imageIds": ["ai-runtime"],
+        "status": "verified",
+        "source": {
+          "file": "deployment-contract-v2.1.example.json",
+          "section": "模拟数据，示例值不可用于现场",
+          "verifiedAt": "2026-11-12T02:00:00Z",
+          "confidence": "verified",
+          "reproductions": 0
+        },
+        "verifiedBy": "fixture-reviewer",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "compatibility": [
+          {
+            "kubernetes": "fixture-k8s",
+            "sealos": "fixture-sealos",
+            "easyManager": "fixture-em",
+            "product": "fixture-product",
+            "chartIds": ["ai-base","ai-addon"],
+            "imageIds": ["ai-runtime"]
+          }
+        ],
+        "verificationRefs": [
+          {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "verified",
+            "reproductions": 0
+          }
+        ]
+      },
+      "valid": false,
+      "edits": [["set","/compatibility",[]]]
+    },
+    {
+      "id": "verified-without-verified-evidence",
+      "definition": "versionLock",
+      "data": {
+        "id": "fixture-lock",
+        "kubernetes": "fixture-k8s",
+        "sealos": "fixture-sealos",
+        "easyManager": "fixture-em",
+        "product": "fixture-product",
+        "packageIds": ["demo-package"],
+        "chartIds": ["ai-base","ai-addon"],
+        "imageIds": ["ai-runtime"],
+        "status": "verified",
+        "source": {
+          "file": "deployment-contract-v2.1.example.json",
+          "section": "模拟数据，示例值不可用于现场",
+          "verifiedAt": "2026-11-12T02:00:00Z",
+          "confidence": "verified",
+          "reproductions": 0
+        },
+        "verifiedBy": "fixture-reviewer",
+        "verifiedAt": "2026-11-12T02:00:00Z",
+        "compatibility": [
+          {
+            "kubernetes": "fixture-k8s",
+            "sealos": "fixture-sealos",
+            "easyManager": "fixture-em",
+            "product": "fixture-product",
+            "chartIds": ["ai-base","ai-addon"],
+            "imageIds": ["ai-runtime"]
+          }
+        ],
+        "verificationRefs": [
+          {
+            "file": "deployment-contract-v2.1.example.json",
+            "section": "模拟数据，示例值不可用于现场",
+            "verifiedAt": "2026-11-12T02:00:00Z",
+            "confidence": "verified",
+            "reproductions": 0
+          }
+        ]
+      },
+      "valid": false,
+      "edits": [["set","/verificationRefs/0/confidence","observed"]]
+    },
+    {
+      "id": "restricted-with-hermes",
+      "definition": "project",
+      "base": "order",
+      "select": "/project",
+      "valid": false,
+      "edits": [
+        ["set","/mode","restricted"],
+        [
+          "set",
+          "/policy",
+          {
+            "allowResultImport": false,
+            "allowHermes": true,
+            "exportAllowed": false,
+            "providerId": "fixture-provider",
+            "dataRegion": "fixture-region",
+            "customerConsentRef": "fixture-consent",
+            "consentUntil": "2026-11-15T00:00:00Z"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "restricted-with-export",
+      "definition": "project",
+      "base": "order",
+      "select": "/project",
+      "valid": false,
+      "edits": [
+        ["set","/mode","restricted"],
+        ["set","/policy",{"allowResultImport":false,"allowHermes":false,"exportAllowed":true}]
+      ]
+    },
+    {
+      "id": "enabled-hermes-without-consent",
+      "definition": "project",
+      "base": "order",
+      "select": "/project",
+      "valid": false,
+      "edits": [["set","/policy/allowHermes",true]]
+    },
+    {
+      "id": "enabled-hermes-with-consent",
+      "definition": "project",
+      "base": "order",
+      "select": "/project",
+      "valid": true,
+      "edits": [
+        [
+          "set",
+          "/policy",
+          {
+            "allowResultImport": true,
+            "allowHermes": true,
+            "exportAllowed": true,
+            "providerId": "fixture-provider",
+            "dataRegion": "fixture-region",
+            "customerConsentRef": "fixture-consent",
+            "consentUntil": "2026-11-15T00:00:00Z"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "team-without-retention",
+      "definition": "project",
+      "base": "order",
+      "select": "/project",
+      "valid": false,
+      "edits": [["set","/mode","team"]]
+    },
+    {
+      "id": "team-retention-and-backup",
+      "definition": "project",
+      "base": "order",
+      "select": "/project",
+      "valid": true,
+      "edits": [
+        ["set","/mode","team"],
+        [
+          "set",
+          "/policy",
+          {
+            "allowResultImport": true,
+            "allowHermes": false,
+            "exportAllowed": true,
+            "retentionDays": 30,
+            "backupRef": "fixture-backup",
+            "restoreDrillRef": "fixture-drill",
+            "backupEncrypted": true
+          }
+        ]
+      ]
+    },
+    {
+      "id": "ask-extra-field",
+      "definition": "askRequest",
+      "base": "ask-request",
+      "valid": false,
+      "edits": [["set","/yaml","fixture"]]
+    },
+    {
+      "id": "ask-601-characters",
+      "definition": "askRequest",
+      "base": "ask-request",
+      "valid": false,
+      "edits": [
+        [
+          "set",
+          "/question",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ]
+      ]
+    },
+    {
+      "id": "ask-step-version-missing",
+      "definition": "askRequest",
+      "base": "ask-request",
+      "valid": false,
+      "edits": [["remove","/stepVersion"]]
+    },
+    {
+      "id": "answer-without-references",
+      "definition": "askResponse",
+      "base": "ask-response",
+      "valid": false,
+      "edits": [["set","/references",[]]]
+    },
+    {
+      "id": "no-match",
+      "definition": "askResponse",
+      "data": {"status":"no-match","reason":"insufficient-evidence"},
+      "valid": true,
+      "edits": []
+    },
+    {
+      "id": "rejected",
+      "definition": "askResponse",
+      "data": {"status":"rejected","reason":"sensitive-content"},
+      "valid": true,
+      "edits": []
+    },
+    {
+      "id": "rejected-without-reason",
+      "definition": "askResponse",
+      "data": {"status":"rejected"},
+      "valid": false,
+      "edits": []
+    },
+    {
+      "id": "metadata-only-audit",
+      "definition": "auditEvent",
+      "data": {
+        "id": "fixture-audit",
+        "projectId": "fixture-multimodal",
+        "actorId": "fixture-operator",
+        "objectId": "fixture-check",
+        "occurredAt": "2026-11-12T02:00:00Z",
+        "action": "ask",
+        "result": "denied",
+        "reasonCode": "sensitive-content"
+      },
+      "valid": true,
+      "edits": []
+    },
+    {
+      "id": "audit-body-rejected",
+      "definition": "auditEvent",
+      "data": {
+        "id": "fixture-audit",
+        "projectId": "fixture-multimodal",
+        "actorId": "fixture-operator",
+        "objectId": "fixture-check",
+        "occurredAt": "2026-11-12T02:00:00Z",
+        "action": "ask",
+        "result": "denied",
+        "reasonCode": "sensitive-content"
+      },
+      "valid": false,
+      "edits": [["set","/question","fixture"]]
+    },
+    {
+      "id": "invalid-rfc3339-time",
+      "definition": "auditEvent",
+      "data": {
+        "id": "fixture-audit",
+        "projectId": "fixture-multimodal",
+        "actorId": "fixture-operator",
+        "objectId": "fixture-check",
+        "occurredAt": "2026-11-12T02:00:00Z",
+        "action": "ask",
+        "result": "denied",
+        "reasonCode": "sensitive-content"
+      },
+      "valid": false,
+      "edits": [["set","/occurredAt","not-a-date"]]
+    },
+    {
+      "id": "embedded-evidence-rejected",
+      "definition": "order",
+      "base": "order",
+      "valid": false,
+      "edits": [
+        [
+          "set",
+          "/evidence",
+          {
+            "schemaVersion": "2.1",
+            "kind": "xingtu-deployment-evidence",
+            "projectId": "fixture-multimodal",
+            "planRevision": 1,
+            "versionLockId": "fixture-lock",
+            "exportedAt": "2026-11-12T02:00:00Z",
+            "records": [
+              {
+                "id": "e-ingress",
+                "instanceId": "fixture-ingress",
+                "stepId": "check-ingress",
+                "stepVersion": "2.1.0",
+                "checkId": "ingress-ready",
+                "targetAlias": "模拟管理节点",
+                "targetFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "inputHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "observedAt": "2026-11-12T02:00:00Z",
+                "operatorId": "fixture-operator",
+                "evidenceType": "structured",
+                "commandId": "ingress-status",
+                "redactedOutput": "就绪副本 1（模拟）",
+                "facts": [{"name":"ready-replicas","value":1,"unit":"count"}],
+                "result": "pass",
+                "recordHash": "cb79b3f2afd2cd69ab81557145925313068bf164c7f2594de1c01ab88dd7d895",
+                "source": {
+                  "file": "deployment-contract-v2.1.example.json",
+                  "section": "模拟数据，示例值不可用于现场",
+                  "verifiedAt": "2026-11-12T02:00:00Z",
+                  "confidence": "unverified",
+                  "reproductions": 0
+                }
+              }
+            ],
+            "id": "fixture-evidence"
+          }
+        ]
+      ]
+    }
+  ]
+}

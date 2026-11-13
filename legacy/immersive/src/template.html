@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>星图 · 沉浸式数栈组件宇宙</title>
+  <style>/*__STYLES__*/</style>
+</head>
+<body>
+  <div id="universe" aria-label="数栈组件三维星图"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div id="warpTransition" class="warp-transition" aria-live="polite" aria-hidden="true">
+    <div class="warp-tunnel" aria-hidden="true"></div>
+    <div class="warp-core" aria-hidden="true"><i></i></div>
+    <div class="warp-copy">
+      <strong id="warpTitle">正在穿越数据星门</strong>
+      <span id="warpSubtitle">重新绘制组件、关系与轨道</span>
+    </div>
+  </div>
+
+  <div id="focusTransition" class="focus-transition" aria-live="polite" aria-hidden="true">
+    <div class="focus-streaks" aria-hidden="true"></div>
+    <div class="focus-lock" aria-hidden="true"><i></i><b></b></div>
+    <div class="focus-caption">
+      <span id="focusKicker">ORBIT SHIFT</span>
+      <strong id="focusTitle">目标轨道</strong>
+      <small id="focusSubtitle">正在重新定位镜头</small>
+    </div>
+  </div>
+
+  <header class="topbar glass">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div><strong>星图</strong><small>组件关系宇宙 · V1.5.0</small></div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input id="searchInput" type="search" placeholder="定位组件、模块、端口或功能" aria-label="搜索沉浸星图">
+      <div id="searchResults" class="search-results"></div>
+    </div>
+    <div class="top-actions">
+      <div class="version-switch" aria-label="数栈版本">
+        <button class="active" data-version="6.3" aria-pressed="true">6.3 主机化</button>
+        <button data-version="7.0" aria-pressed="false">7.0 K8s</button>
+      </div>
+      <div class="mode-switch" aria-label="星图模式">
+        <button class="active" data-mode="knowledge" aria-pressed="true">知识图</button>
+        <button data-mode="live" aria-pressed="false">实况图</button>
+      </div>
+      <select id="relationFilter" aria-label="关系类型">
+        <option value="runtime">运行依赖</option>
+        <option value="deploy">部署顺序</option>
+        <option value="colocate">同机约束</option>
+        <option value="manage">管理关系</option>
+        <option value="all">全部关系</option>
+      </select>
+      <button id="upgradeViewBtn" class="upgrade-view-btn" aria-pressed="false">⇧ 升级视角</button>
+      <button id="soundBtn" aria-pressed="false">◌ 声音</button>
+      <button id="homeBtn">◎ 返回宇宙</button>
+      <a class="ops-link" href="/">▦ 运维台</a>
+    </div>
+  </header>
+
+  <section id="dataStatus" class="data-status glass" aria-live="polite">
+    <span class="status-light knowledge"></span>
+    <strong id="dataStatusTitle">知识图 · 本地资料</strong>
+    <span id="dataStatusMetrics">22 组件 · 26 关系</span>
+    <button id="syncBtn">↻ 同步实况</button>
+  </section>
+
+  <section class="mission-dock glass" aria-label="链路任务">
+    <div class="dock-kicker">MISSION CONTROL</div>
+    <button class="mission-btn" data-path="offline"><span class="mission-orb blue"></span><span><strong>离线任务航线</strong><small>DTBatch → Hadoop</small></span><i>▶</i></button>
+    <button class="mission-btn" data-path="realtime"><span class="mission-orb cyan"></span><span><strong>实时任务航线</strong><small>DTStream → Hadoop</small></span><i>▶</i></button>
+    <div id="liveDock" class="live-dock">
+      <div><span class="health-dot healthy"></span><strong id="healthyCount">0</strong><small>健康产品</small></div>
+      <div><span class="health-dot unhealthy"></span><strong id="unhealthyCount">0</strong><small>异常产品</small></div>
+      <div><span class="health-dot unknown"></span><strong id="unknownCount">0</strong><small>状态未知</small></div>
+      <p id="liveDockNote">等待连接 EM 数据源</p>
+    </div>
+    <div class="dock-stats"><span><strong id="componentCount">0</strong> 组件</span><span><strong id="relationCount">0</strong> 关系</span><em>OFFLINE</em></div>
+  </section>
+
+  <aside id="detailsPanel" class="details-panel glass" aria-live="polite"></aside>
+
+  <div id="hoverHud" class="hover-hud glass"></div>
+  <div class="nav-hint glass"><span>拖动旋转宇宙</span><i></i><span>滚轮推进镜头</span><i></i><span>点击星球进入轨道</span><i></i><span>点击空白返回总览</span></div>
+
+  <section id="timeline" class="timeline glass">
+    <div class="timeline-head"><span id="timelineTitle">航线待命</span><strong id="timelineStage">选择一条任务链路开始演示</strong></div>
+    <div id="timelineTrack" class="timeline-track"></div>
+    <button id="stopMissionBtn">停止演示</button>
+  </section>
+
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loading-star"></div>
+    <strong>正在进入星图宇宙</strong>
+    <span>装载组件、航线与本地资料</span>
+  </div>
+
+  <script>/*__SCRIPT__*/</script>
+</body>
+</html>

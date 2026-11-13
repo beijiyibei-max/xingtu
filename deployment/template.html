@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="__DEPLOYMENT_CSP__">
+  <title>数栈 7.0 · 现场部署向导</title>
+  <style>/*__DEPLOYMENT_CSS__*/</style>
+</head>
+<body>
+  <header class="mast">
+    <div class="mast-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span> <strong>星图</strong><span>现场部署 · 数栈 7.0</span></div>
+      <nav id="main-links" aria-label="星图入口" hidden><a href="/">星图首页</a><a href="/k8s">7.0 组件图</a><a href="/criteria">排障与质检</a><a href="/workbench">项目与验收</a></nav>
+    </div>
+  </header>
+  <main id="deployment-main" data-view="beginner">
+    <section class="intro pro-only">
+      <div class="intro-copy"><p class="eyebrow">SEALOS / KUBERNETES / EASYMANAGER</p><h1>现场部署向导</h1>
+        <p>先检查服务器和配置，再跟着当前一步做。</p>
+        <button id="resume" class="primary" type="button">定位下一步 <span aria-hidden="true">↗</span></button>
+      </div>
+      <div class="intro-count" aria-label="部署进度概览">
+        <span class="meter-title">已处理 / 全部步骤</span>
+        <div><strong id="handled-count">00</strong><span> / </span><span id="total-count"></span></div>
+        <progress id="progress" aria-label="已处理的部署步骤"></progress>
+        <strong id="progress-label"></strong>
+      </div>
+    </section>
+    <div class="toolbar" aria-label="检查与进度管理">
+      <button type="button" class="yaml-entry" data-host-check>检查服务器</button>
+      <button type="button" class="yaml-entry" data-yaml-review>检查 YAML</button>
+      <button id="view-mode" type="button">完整步骤和设置</button>
+      <button id="download" class="pro-only" type="button">保存进度文件</button>
+      <button id="import" type="button">导入进度</button>
+      <button id="report" class="pro-only" type="button">导出交接清单</button>
+      <button id="fresh" class="quiet pro-only" type="button">新建计划</button>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+      <span id="storage-status"></span>
+    </div>
+    <p id="message" class="message" role="status"></p>
+    <section id="walk-screen" class="surface walk-screen beginner-only" aria-label="部署陪跑"></section>
+    <details id="settings" class="surface settings pro-only">
+      <summary>本次部署设置 <span id="scope-summary"></span></summary>
+      <form id="scope-form">
+        <p>填写便于识别的项目代号。现场凭据、私有地址和原始输出保留在获准的环境里。</p>
+        <div class="fields">
+          <label>项目代号<input name="alias" placeholder="例如 现场A" maxlength="40" required></label>
+          <label>Kubernetes<select name="cluster" required><option value="">选择</option><option value="new">从零安装</option><option value="reuse">复用已有集群</option></select></label>
+          <label>EasyManager<select name="manager" required><option value="">选择</option><option value="new">安装 EM</option><option value="reuse">复用已有 EM</option></select></label>
+          <label>网络条件<select name="network" required><option value="">选择</option><option value="offline">离线物料</option><option value="approved-network">使用获准网络</option></select></label>
+          <label>存储方案<select name="storage" required><option value="">选择</option><option value="s3">S3 / MinIO</option><option value="nfs">NFS</option><option value="mixed">S3 与 NFS 分工</option></select></label>
+          <label>产品 Namespace<input name="ns" value="dtstack" maxlength="63" required></label>
+          <label>EM Namespace<input name="emNs" value="easymanager" maxlength="63" required></label>
+        </div>
+        <button class="primary" type="submit">保存本次设置</button>
+      </form>
+    </details>
+    <nav id="phase-map" class="phase-map pro-only" aria-label="部署阶段"></nav>
+    <div class="workspace pro-only">
+      <aside class="surface outline pro-only">
+        <label for="search">搜索步骤、组件或现象</label>
+        <input id="search" type="search" placeholder="例如 157、jobCount、镜像">
+        <div id="quick-symptoms" class="quick-symptoms" aria-label="常见报错">
+          <button type="button" data-symptom="ImagePullBackOff">拉镜像失败</button>
+          <button type="button" data-symptom="FailedMount">挂载失败</button>
+          <button type="button" data-symptom="157">157</button>
+          <button type="button" data-symptom="403">403</button>
+        </div>
+        <nav id="steps" aria-label="部署步骤"></nav>
+      </aside>
+      <article id="detail" class="surface detail" aria-labelledby="step-title"></article>
+    </div>
+  </main>
+  <footer>星图现场部署向导 · 步骤结果由现场人员核验并记录</footer>
+  <dialog id="yaml-review" aria-labelledby="yaml-title">
+    <div class="yaml-head">
+      <div><h2 id="yaml-title">现场配置体检</h2><p>选择公司下发的 YAML，查模板值、字段位置和修改建议。文件在本机检查。</p></div>
+      <button id="yaml-close" type="button">关闭</button>
+    </div>
+    <div class="yaml-body">
+      <div class="yaml-tools">
+        <button id="yaml-choose" class="primary" type="button" autofocus>选择 YAML</button>
+        <button id="yaml-example" type="button">查看演示</button>
+        <button id="yaml-clear" type="button">清空体检</button>
+        <input id="yaml-files" type="file" accept=".yaml,.yml" multiple hidden>
+      </div>
+      <details class="callout yaml-baseline">
+        <summary>填写已确认的现场值（可选）</summary>
+        <p>只填实施单已确认的值。可留空，密码、Token 和证书无需填写。</p>
+        <div id="yaml-baseline" class="fields"></div>
+        <button id="yaml-rescan" type="button">对照现场值复查</button>
+      </details>
+      <p id="yaml-status" role="status">选一个或多个 YAML 开始检查。</p>
+      <div id="yaml-filters" class="yaml-filters" aria-label="筛选检查项" hidden></div>
+      <div id="yaml-results"></div>
+    </div>
+  </dialog>
+  <dialog id="host-check" aria-labelledby="host-title">
+    <div class="yaml-head">
+      <div><h2 id="host-title">服务器只读检查</h2><p>每台各跑一次。在获准的 Linux 终端执行，再把最后一行结果带回本页。</p></div>
+      <button id="host-close" type="button">关闭</button>
+    </div>
+    <div class="yaml-body">
+      <h3>1. 复制命令，到服务器执行</h3>
+      <label class="check"><input id="host-k8s" type="checkbox"><span>同时检查当前 kubectl 集群（已确认 context，且获准查询）</span></label>
+      <div class="yaml-tools">
+        <button type="button" class="primary" id="host-copy" autofocus>复制只读命令</button>
+        <button type="button" id="host-download">下载脚本</button>
+      </div>
+      <details class="callout"><summary>查看命令和脚本内容</summary>
+        <p>在 Linux shell 执行。若客户允许传文件，也可下载后用 <code>sh xt-preflight.sh</code> 执行，需查集群时加 <code>--k8s</code>。</p>
+        <pre id="host-command" class="host-command"></pre>
+        <pre id="host-source"></pre>
+      </details>
+      <h3>2. 粘贴结果，查看下一步</h3>
+      <label class="host-input">只粘贴 <code>XT_PREFLIGHT_V1=</code> 开头的最后一行<textarea id="host-result-input" maxlength="4096" rows="2" spellcheck="false" autocomplete="off"></textarea></label>
+      <div class="yaml-tools">
+        <button type="button" class="primary" id="host-interpret">查看检查结果</button>
+        <button type="button" id="host-import">选择结果文件</button>
+        <input id="host-result-file" type="file" accept=".txt,text/plain" hidden>
+      </div>
+      <p id="host-status" role="status">按客户许可带出结果。检测行只有状态、容量和计数。</p>
+      <ul id="host-results" aria-label="检查结果"></ul>
+    </div>
+  </dialog>
+  <script>/*__DEPLOYMENT_JS__*/</script>
+</body>
+</html>

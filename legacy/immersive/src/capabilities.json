@@ -1,0 +1,937 @@
+{
+  "generatedAt": "2026-10-30",
+  "sourceFile": "bin/xt-blackbox",
+  "capabilities": [
+    {
+      "id": "redis-ha",
+      "name": "Redis 高可用（哨兵）",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "1 主 2 从 + 3 哨兵，故障自动切换",
+      "deps": [
+        "*/redis-replication*/3",
+        "*/redis-sentinel*/3",
+        "*/redis-operator/1"
+      ],
+      "wires": [
+        "global.redis.sentinel=true"
+      ],
+      "params": [
+        {
+          "source": "common-config.yaml / global.redis",
+          "key": "sentinel",
+          "expect": "true",
+          "type": "布尔",
+          "desc": "false 表示业务走单实例"
+        },
+        {
+          "source": "common-config.yaml / global.redis",
+          "key": "sentinelHost",
+          "expect": "redis-sentinel-sentinel:26379",
+          "type": "地址",
+          "desc": "sentinel=true 时必须填"
+        },
+        {
+          "source": "common-config.yaml / global.redis",
+          "key": "host",
+          "expect": "redis-sentinel-sentinel",
+          "type": "服务名",
+          "desc": "切哨兵后 host 也要指过去"
+        }
+      ],
+      "apply": [
+        "EM → 组件管理 → 公共配置 → global 段，改 redis.sentinel 等 3 个键",
+        "保存后重部署依赖 redis 的组件（见影响面）",
+        "!! 不要直接 kubectl edit cm：EM 每次保存配置都会重渲染并覆盖手改"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o name | grep -c redis-sentinel",
+          "expect": "3"
+        },
+        {
+          "cmd": "kubectl get pod -A -o name | grep -c redis-standalone",
+          "expect": "0"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -n <ns> -- sh -c 'grep -ri sentinel /opt/dtstack/*/conf/*.properties'",
+          "expect": "sentinel"
+        }
+      ],
+      "impact": "dtuic publicservice batch stream api assets",
+      "fallback": "把 3 个键改回 false / 空 / redis-standalone-master，再重部署一次",
+      "note": "切换瞬间缓存失效；database 编号必须与单实例一致",
+      "source": "现场台账 C-12 · 痛点总结 §3.2"
+    },
+    {
+      "id": "redis-single",
+      "name": "Redis 单实例",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "单点，节点或进程异常即不可用",
+      "deps": [
+        "*/redis-standalone*/1"
+      ],
+      "wires": [
+        "global.redis.sentinel=false"
+      ],
+      "params": [
+        {
+          "source": "common-config.yaml / global.redis",
+          "key": "sentinel",
+          "expect": "false",
+          "type": "布尔",
+          "desc": "true = 走哨兵高可用"
+        },
+        {
+          "source": "common-config.yaml / global.redis",
+          "key": "host",
+          "expect": "redis-standalone-master",
+          "type": "服务名",
+          "desc": "必须与真实 Service 名完全一致"
+        },
+        {
+          "source": "common-config.yaml / global.redis",
+          "key": "port",
+          "expect": "6379",
+          "type": "端口",
+          "desc": "随主机端口矩阵核对"
+        }
+      ],
+      "apply": [
+        "保持现状即可；若从哨兵回退，把上面 3 个键改回这组值",
+        "!! 回退后缓存里可能残留哨兵写入的数据，必要时重建"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o wide | grep redis-standalone",
+          "expect": "1/1"
+        }
+      ],
+      "impact": "dtuic publicservice batch stream api assets",
+      "fallback": "改回哨兵三键并重部署",
+      "note": "单点：节点宕机 / 磁盘满 / 进程异常都会直接停服",
+      "source": "现场台账 C-12 · 痛点总结 §3.2"
+    },
+    {
+      "id": "platform-ha",
+      "name": "平台高可用副本（replicaHighCount）",
+      "category": "平台",
+      "group": "dtstack",
+      "brief": "配置里声明的副本数，运行时应与之一致",
+      "deps": [],
+      "wires": [
+        "global.replicaHighCount>=2"
+      ],
+      "params": [
+        {
+          "source": "common-config.yaml / global",
+          "key": "replicaHighCount",
+          "expect": "2",
+          "type": "枚举",
+          "desc": "有状态组件的期望副本数"
+        }
+      ],
+      "apply": [
+        "EM → 公共配置 → global 段改 replicaHighCount",
+        "!! 改完必须重部署有状态组件，否则只是改了个数字（配置声明 ≠ 运行时副本）",
+        "!! 副本数受节点标签与反亲和约束，节点不够会 Pending"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sts -A -o custom-columns=N:.metadata.name,R:.status.readyReplicas,D:.spec.replicas",
+          "expect": "每个 sts 的 ready 应等于 replicaHighCount"
+        }
+      ],
+      "impact": "kafka zookeeper nacos mysql postgresql redis es",
+      "fallback": "改回 1 并重部署",
+      "note": "这是最容易被忽略的一条：配置说 2、实际跑 1，等于没有高可用",
+      "source": "现场实测 2026-10-30",
+      "drift": "replica"
+    },
+    {
+      "id": "ai-capability",
+      "name": "AI / 多模态能力",
+      "category": "平台",
+      "group": "dtstack",
+      "brief": "开关关闭时组件仍在跑，但门户不出现入口",
+      "deps": [
+        "*/aiworks*/1"
+      ],
+      "wires": [
+        "global.ai_switch=true",
+        "global.feature.ai=true"
+      ],
+      "params": [
+        {
+          "source": "common-config.yaml / global",
+          "key": "ai_switch",
+          "expect": "true",
+          "type": "布尔",
+          "desc": "平台级总开关"
+        },
+        {
+          "source": "common-config.yaml / global.feature",
+          "key": "ai",
+          "expect": "true",
+          "type": "布尔",
+          "desc": "功能开关，与 ai_switch 分开"
+        },
+        {
+          "source": "common-config.yaml / global.feature",
+          "key": "stream",
+          "expect": "true",
+          "type": "布尔",
+          "desc": "实时开发入口"
+        },
+        {
+          "source": "common-config.yaml / global.feature",
+          "key": "ide",
+          "expect": "true",
+          "type": "布尔",
+          "desc": "离线开发入口"
+        }
+      ],
+      "apply": [
+        "EM → 公共配置 → global 段改 ai_switch / feature.ai",
+        "各模块的 feature.* 开关在同一个 global.feature 段里，别只改 ai_switch",
+        "!! 开关开启 ≠ 组件已安装；先确认 aiworks / kuberay / uniparse 都在"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl exec <指名Pod> -n <ns> -- sh -c 'env | grep -i ai_switch'",
+          "expect": "ai_switch"
+        }
+      ],
+      "impact": "aiworks aiworksfront kuberay-operator uniparse",
+      "fallback": "ai_switch / feature.ai 改回 false 并重部署",
+      "note": "开关注入在各模块 ConfigMap，改完必须重启对应组件才生效",
+      "source": "现场台账 观察-07/观察-08 · 痛点总结 §4.4"
+    },
+    {
+      "id": "s3-backend",
+      "name": "对象存储后端（minio / rustfs / oss）",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "业务实际连哪一个对象存储",
+      "deps": [
+        "*/minio*/1"
+      ],
+      "wires": [
+        "global.s3.type+"
+      ],
+      "params": [
+        {
+          "source": "common-config.yaml / global.s3",
+          "key": "type",
+          "expect": "minio",
+          "type": "枚举",
+          "desc": "可选 minio / rustfs / oss，必须与真正在跑的组件一致"
+        },
+        {
+          "source": "common-config.yaml / global.s3",
+          "key": "endpoint",
+          "expect": "（按现场）",
+          "type": "地址",
+          "desc": "要能从 Pod 内解析"
+        },
+        {
+          "source": "common-config.yaml / global.s3",
+          "key": "bucket",
+          "expect": "dt-storage",
+          "type": "名称",
+          "desc": "桶不存在会在运行期才报错"
+        }
+      ],
+      "apply": [
+        "EM → 公共配置 → global.s3 段",
+        "!! 集群里可能同时跑着 minio 与 rustfs，改 type 前先确认目标组件 Pod 就绪"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o name | grep -iE 'minio|rustfs'",
+          "expect": "目标后端有 Pod"
+        },
+        {
+          "cmd": "kubectl get sc -o yaml | grep -ci <目标后端>",
+          "expect": ">0 表示存储类也指向它"
+        }
+      ],
+      "impact": "csi-s3 minio rustfs 相关任务",
+      "fallback": "改回原 type 并重部署依赖组件",
+      "note": "同类组件多重部署是这台环境的常态：三套 S3 后端并存，配置只指向其中一个",
+      "source": "现场实测 2026-10-30"
+    },
+    {
+      "id": "es-cluster",
+      "name": "Elasticsearch 多节点",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "多副本可扛单节点故障",
+      "deps": [
+        "*/es-cluster*/2"
+      ],
+      "wires": [],
+      "params": [
+        {
+          "source": "common-config.yaml / global.es",
+          "key": "host",
+          "expect": "external-es-svc",
+          "type": "地址",
+          "desc": "跨 ns 必须用 FQDN"
+        }
+      ],
+      "apply": [
+        "副本数由 global.replicaHighCount 控制，改完要重部署 es chart",
+        "落点、数据目录、内核参数 vm.max_map_count 要同时核验",
+        "!! 扩副本前先确认节点有 dtstack-elastic 标签，否则新 Pod 会 Pending"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sts -A | grep es-cluster",
+          "expect": "期望副本数 = replicaHighCount"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -n <ns> -- curl -s localhost:9200/_cluster/health",
+          "expect": "status 非 red"
+        }
+      ],
+      "impact": "metadata assets easyindex api batch stream",
+      "fallback": "副本数改回 1 并重部署",
+      "note": "每 2 秒刷屏的 NoSuchKey 404 与 ES 无关，是 engine 取 jobArchive 的已知缺陷",
+      "source": "现场实测 2026-10-30"
+    },
+    {
+      "id": "kafka-ha",
+      "name": "Kafka 多副本",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "副本数决定可用性",
+      "deps": [
+        "*/kafka/3"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "副本数由 global.replicaHighCount 控制；单副本时 broker 挂了实时任务直接中断",
+        "!! 改顶层 nodeAffinityPreset，不是 metrics 子树"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sts -A | grep kafka",
+          "expect": "期望副本数 = replicaHighCount"
+        },
+        {
+          "cmd": "kubectl get pod -A -o name | grep -c kafka",
+          "expect": "与期望一致"
+        }
+      ],
+      "impact": "stream batch 实时任务",
+      "fallback": "副本数改回 1 并重部署",
+      "note": "Kafka 重启后 consumer group 会重新平衡，实时任务有短暂中断",
+      "source": "复盘 §D-17"
+    },
+    {
+      "id": "mysql-ha",
+      "name": "MySQL 主从",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "单实例 MySQL 为全站级单点",
+      "deps": [
+        "*/mysql/2"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "主从需要 chart 支持且数据目录已按主从规划，不是改个副本数就行",
+        "!! 既有数据目录在哪台就必须落哪台，禁止重新初始化"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sts -A | grep mysql",
+          "expect": "期望 2 个 ready"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -n <ns> -- mysql -e 'show slave status'",
+          "expect": "Slave_IO_Running=Yes"
+        }
+      ],
+      "impact": "全平台（登录、权限、任务、调度）",
+      "fallback": "回退为单实例并从备份恢复",
+      "note": "推断：本环境 mysql chart 是否支持主从未实测，切换前必须在测试环境验证",
+      "source": "组件职责与依赖 §2"
+    },
+    {
+      "id": "nacos-cluster",
+      "name": "Nacos 集群",
+      "category": "平台",
+      "group": "dtstack",
+      "brief": "注册中心单节点会让网关报「没有可用的服务」",
+      "deps": [
+        "*/nacos/3"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "副本数由 global.replicaHighCount 控制；单副本时 Nacos 重启会短暂丢失服务注册",
+        "!! 成员名单必须形成真实集群，Running 不等于实例同步正常"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sts -A | grep nacos",
+          "expect": "期望副本数 = replicaHighCount"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -n <ns> -- curl -s localhost:8848/nacos/v1/ns/operator/metrics",
+          "expect": "能看到集群信息"
+        }
+      ],
+      "impact": "gateway api batch stream assets（所有走服务发现的组件）",
+      "fallback": "副本数改回 1 并重部署",
+      "note": "网关 157 的常见根因就是 Nacos 实例列表为空或节点间不一致，不是网关本身",
+      "source": "现场台账 观察-56 / C-43"
+    },
+    {
+      "id": "starrocks",
+      "name": "StarRocks（OLAP）",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "FE/BE 分离的 OLAP 集群",
+      "deps": [
+        "*/kube-starrocks-fe*/1",
+        "*/kube-starrocks-be*/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "BE 副本按数据量与并发决定；FE 副本决定元数据可用性",
+        "!! FE 单副本时 FE 挂掉整个 OLAP 不可用；扩 FE 前要先解决元数据同步"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl -n kube-starrocks get sts",
+          "expect": "全部 ready"
+        },
+        {
+          "cmd": "kubectl get pod -n kube-starrocks | grep -c kube-starrocks-be",
+          "expect": "与期望一致"
+        }
+      ],
+      "impact": "指标、报表、即席查询",
+      "fallback": "回退副本数并重部署",
+      "note": "本次实测 FE/BE 各 1 副本，FE 为元数据单点",
+      "source": "现场实测 2026-10-30"
+    },
+    {
+      "id": "csi-s3",
+      "name": "S3 存储卷（csi-s3）",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "把对象存储暴露成 K8s 卷",
+      "deps": [
+        "*/csi-s3-provisioner/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "改 endpoint / secretRef 后通常要重建 PVC/PV，否则卷仍指向旧 endpoint",
+        "!! secret 在别的命名空间时要复制过去，csi 只读自己 ns"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sc",
+          "expect": "有 csi-s3 且指向目标对象存储"
+        },
+        {
+          "cmd": "kubectl -n csi-s3 get pod",
+          "expect": "provisioner 1/1"
+        }
+      ],
+      "impact": "所有用 S3 卷的任务与组件（ray / flink / model）",
+      "fallback": "回退 sc 与 secret 并重建 PV",
+      "note": "推断：endpoint 变更是否需要重建 PV 取决于 csi-s3 版本，切换前在测试环境验证",
+      "source": "现场实测 2026-10-30"
+    },
+    {
+      "id": "task-operators",
+      "name": "任务引擎 Operator（Ray / Flink / Spark）",
+      "category": "计算",
+      "group": "dtstack",
+      "brief": "任务起不起得来，先看对应 operator 在不在",
+      "deps": [
+        "*/ray-operator*/1",
+        "*/flink-operator*/1",
+        "*/spark-operator*/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "任务起不来先看对应 operator Pod，不要先怀疑任务模板",
+        "!! 任务对象失败后可能被快速回收，取证窗口很短，要现抓"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o name | grep -cE 'ray-operator|flink-operator|spark-operator'",
+          "expect": "3"
+        }
+      ],
+      "impact": "离线任务 / 实时任务 / 算子任务",
+      "fallback": "重启对应 operator",
+      "note": "Ray 作业用完即删，日志要现抓；算子镜像名被服务端拼错的坑见台账",
+      "source": "现场台账 C-06/C-07 / 复盘 §D-10"
+    },
+    {
+      "id": "gpu-sharing",
+      "name": "GPU 切分（HAMi）",
+      "category": "计算",
+      "group": "dtstack",
+      "brief": "把物理卡切成多份给任务用",
+      "deps": [
+        "*/hami-scheduler/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "节点侧安装 GPU Operator + HAMi，再给节点打 gpu 相关标签",
+        "!! 驱动不要重装：已装好驱动的节点必须 driver.enabled=false"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{\"=\"}{.status.allocatable.nvidia\\.com/gpu}{\" \"}{end}'",
+          "expect": "非空的那台就是 GPU 节点"
+        },
+        {
+          "cmd": "kubectl -n hami get pod",
+          "expect": "scheduler 1/1"
+        }
+      ],
+      "impact": "算子任务 / 向量化 / 模型服务",
+      "fallback": "卸载 HAMi 并恢复整卡独占",
+      "note": "节点 allocatable 为 0 时任务会一直 Pending；本环境只有 1 台节点有 10 个槽位",
+      "source": "现场实测 2026-10-30"
+    },
+    {
+      "id": "gravitino",
+      "name": "数据目录（Gravitino）",
+      "category": "平台",
+      "group": "dtstack",
+      "brief": "元数据目录服务，资产建 schema 依赖它",
+      "deps": [
+        "*/gravitino/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "catalog 缺失时建 schema 会报 Catalog xxx does not exist",
+        "!! 卸载不删 PVC 与 MySQL 库，按原 values 重装即恢复"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o name | grep -c gravitino",
+          "expect": "1"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -- curl -s localhost:8090/api/metalakes",
+          "expect": "返回 metalake 列表"
+        }
+      ],
+      "impact": "metadata / assets",
+      "fallback": "helm uninstall 后按原 values 重装",
+      "note": "8090 是管理端口、9001 是 iceberg REST 端口，catalog 的 uri 要指 9001",
+      "source": "现场台账 C-01/C-02/C-19"
+    },
+    {
+      "id": "cert-manager",
+      "name": "证书管理（cert-manager）",
+      "category": "平台",
+      "group": "dtstack",
+      "brief": "自签与续期证书，入口 TLS 依赖它",
+      "deps": [
+        "*/cert-manager/1",
+        "*/cert-manager-cainjector/1",
+        "*/cert-manager-webhook/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "装完要确认 webhook 就绪，否则创建 Certificate 会一直卡住"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl -n cert-manager get pod",
+          "expect": "3 个都 ready"
+        },
+        {
+          "cmd": "kubectl get clusterissuer",
+          "expect": "至少一个 Ready"
+        }
+      ],
+      "impact": "ingress-nginx / 所有 TLS 入口",
+      "fallback": "helm uninstall 后重装",
+      "note": "webhook 未就绪时证书签发会静默失败，表现为入口证书过期",
+      "source": "现场实测 2026-10-30"
+    },
+    {
+      "id": "zookeeper-ha",
+      "name": "ZooKeeper 集群",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "调度、注册、协调链路的一致性基础",
+      "deps": [
+        "*/zookeeper/3"
+      ],
+      "wires": [],
+      "params": [
+        {
+          "source": "common-config.yaml / global.zookeeper",
+          "key": "host",
+          "expect": "zookeeper-client",
+          "type": "服务名",
+          "desc": "必须与真实 Service 名一致"
+        }
+      ],
+      "apply": [
+        "副本数由 global.replicaHighCount 控制，改完要重部署 zookeeper chart",
+        "!! 数据目录必须落在固定节点上，扩副本前先规划落点，否则新节点起来是空库"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sts -A | grep zookeeper",
+          "expect": "副本数 = replicaHighCount 且全部 ready"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -n <ns> -- sh -c 'echo ruok | nc localhost 2181'",
+          "expect": "imok"
+        }
+      ],
+      "impact": "kafka nacos engine 调度链路",
+      "fallback": "副本数改回 1 并重部署",
+      "note": "ZooKeeper 单节点时，节点重启期间调度与注册都会受影响",
+      "source": "组件职责与依赖 §2"
+    },
+    {
+      "id": "postgresql-ha",
+      "name": "PostgreSQL",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "为启用 PostgreSQL 的产品能力提供关系存储",
+      "deps": [
+        "*/postgresql/2"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "副本数由 global.replicaHighCount 控制；主从需要 chart 支持且数据目录已规划",
+        "!! 落点标签是裸 postgresql 前缀，不能擅自补 dtstack"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sts -A | grep postgresql",
+          "expect": "期望副本数且全部 ready"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -n <ns> -- psql -U postgres -c 'select 1'",
+          "expect": "返回 1"
+        }
+      ],
+      "impact": "使用 PostgreSQL 的产品模块",
+      "fallback": "回退单实例并从备份恢复",
+      "note": "数据目录在哪台就必须落哪台，禁止重新初始化",
+      "source": "组件职责与依赖 §2"
+    },
+    {
+      "id": "minio-distributed",
+      "name": "MinIO 分布式",
+      "category": "存储",
+      "group": "dtstack",
+      "brief": "4 节点以上纠删码，可扛单节点故障",
+      "deps": [
+        "*/minio/4"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "分布式模式要求目标目录为空，已有数据不能直接用",
+        "!! 数据迁移只能用 mc mirror / 桶复制，不能拷目录",
+        "!! 切换需要停机窗口，提前和业务确认"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o name | grep -c minio",
+          "expect": "至少 4"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -n minio -- mc admin info local",
+          "expect": "所有盘 Online"
+        }
+      ],
+      "impact": "全平台对象存储与所有依赖 S3 的任务",
+      "fallback": "回退单实例并保留异机副本",
+      "note": "单实例时磁盘满或节点故障即整体停服，本环境曾两次因此中断",
+      "source": "痛点总结 §2.2/§8.1"
+    },
+    {
+      "id": "registry",
+      "name": "镜像仓库",
+      "category": "基础设施",
+      "group": "core",
+      "brief": "私有镜像仓库可用，且镜像确实被推送进去",
+      "deps": [
+        "*/registry*/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "仓库地址与 chart 里的 imagePrefix 必须一致",
+        "!! 上传成功不等于入库：以 catalog / tags/list 为准，不信本地 docker images"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o name | grep -iE \"registry|harbor\"",
+          "expect": "有 Pod 在跑"
+        },
+        {
+          "cmd": "curl -s http://<仓库>/v2/_catalog",
+          "expect": "返回仓库列表"
+        }
+      ],
+      "impact": "所有组件的镜像拉取",
+      "fallback": "切换回原仓库并重建节点镜像缓存",
+      "note": "OCI 包用 docker load 会静默失败，必须用 ctr -n k8s.io images import",
+      "source": "痛点总结 §3.6"
+    },
+    {
+      "id": "ingress-entry",
+      "name": "入口与 TLS",
+      "category": "基础设施",
+      "group": "core",
+      "brief": "域名解析、入口转发、证书续期三段链路",
+      "deps": [
+        "*/ingress-nginx*/1",
+        "*/cert-manager/1"
+      ],
+      "wires": [
+        "global.domain+",
+        "global.ssl_tls_secret_name+"
+      ],
+      "params": [
+        {
+          "source": "common-config.yaml / global",
+          "key": "domain",
+          "expect": "（现场域名）",
+          "type": "地址",
+          "desc": "门户对外域名"
+        },
+        {
+          "source": "common-config.yaml / global",
+          "key": "is_ssl",
+          "expect": "true",
+          "type": "布尔",
+          "desc": "是否启用 HTTPS"
+        },
+        {
+          "source": "common-config.yaml / global",
+          "key": "ssl_tls_secret_name",
+          "expect": "portalfront-tls",
+          "type": "名称",
+          "desc": "证书 Secret 名"
+        }
+      ],
+      "apply": [
+        "证书由 cert-manager 签发时，确认 webhook 就绪且有 ClusterIssuer",
+        "!! 改域名后要同步改 gateway_domain，否则门户能开但接口 401"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get ingress -A",
+          "expect": "有对应 host"
+        },
+        {
+          "cmd": "curl -I https://<域名>/",
+          "expect": "200 且证书有效"
+        }
+      ],
+      "impact": "所有外部访问入口",
+      "fallback": "回退域名与证书配置",
+      "note": "证书静默过期是最常见的「昨天还好好的」故障",
+      "source": "现场实测 2026-10-30"
+    },
+    {
+      "id": "monitoring",
+      "name": "监控与告警",
+      "category": "可观测",
+      "group": "core",
+      "brief": "指标采集、告警规则、通知链路是否真的通",
+      "deps": [
+        "*/prometheus*/1",
+        "*/grafana*/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "组件在跑不等于告警会响：必须有告警规则 + 通知渠道 + 接收确认",
+        "!! 磁盘水位、关键 Pod 非 Ready、证书到期三类是最该先配的"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o name | grep -cE \"prometheus|grafana\"",
+          "expect": "与部署范围一致"
+        },
+        {
+          "cmd": "kubectl get prometheusrule -A",
+          "expect": "至少有磁盘与 Pod 状态规则"
+        }
+      ],
+      "impact": "发现能力本身",
+      "fallback": "回退告警配置",
+      "note": "本环境磁盘曾到 91% 才靠人肉发现，说明告警链路存在缺口",
+      "source": "痛点总结 §4.3"
+    },
+    {
+      "id": "logging-pipeline",
+      "name": "日志采集链路",
+      "category": "可观测",
+      "group": "core",
+      "brief": "应用日志是否真的被采集、能存多久、能不能查",
+      "deps": [
+        "*/fluent*/1"
+      ],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "先确认应用把日志写到哪里：stdout 还是容器内文件",
+        "!! 写容器内文件的组件，重启即丢，日志采集抓不到"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pod -A -o name | grep -icE \"fluent|logstash|vector\"",
+          "expect": "大于 0"
+        },
+        {
+          "cmd": "kubectl exec <指名Pod> -n <ns> -- ls -l /opt/*/logs",
+          "expect": "确认日志目录是否挂载到持久卷"
+        }
+      ],
+      "impact": "故障时的取证能力",
+      "fallback": "—",
+      "note": "应用日志不落盘时，容器活 10 秒就再也拿不到异常栈",
+      "source": "痛点总结 §3.7"
+    },
+    {
+      "id": "plugin-distribution",
+      "name": "插件分发",
+      "category": "平台",
+      "group": "dtstack",
+      "brief": "jobCount 决定插件任务落到几个节点，配错就是 0/0",
+      "deps": [],
+      "wires": [
+        "global.plugin.jobCount>=1"
+      ],
+      "params": [
+        {
+          "source": "common-config.yaml / plugin",
+          "key": "jobCount",
+          "expect": "业务节点数",
+          "type": "枚举",
+          "desc": "插件 Job 的 completions"
+        },
+        {
+          "source": "common-config.yaml / plugin",
+          "key": "nfs_sc",
+          "expect": "（按现场）",
+          "type": "名称",
+          "desc": "插件卷的 StorageClass"
+        },
+        {
+          "source": "common-config.yaml / plugin",
+          "key": "pluginLabel",
+          "expect": "false",
+          "type": "布尔",
+          "desc": "false 时所有节点都执行"
+        }
+      ],
+      "apply": [
+        "改 jobCount 后必须重装插件 chart：completions 不可变",
+        "!! 重新下载 common-config 会把 jobCount 冲回默认值，改完要回查"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get job -A",
+          "expect": "completions 与 jobCount 一致"
+        },
+        {
+          "cmd": "kubectl get pod -A | grep -c plugin-",
+          "expect": "与节点数匹配，不能是 0"
+        }
+      ],
+      "impact": "chunjun datasourcex engineplugin flinksql sqlparser",
+      "fallback": "改回原 jobCount 并重装",
+      "note": "jobCount=0 时 Job 显示 0/0 且不建 Pod，任务侧全部不可用",
+      "source": "现场台账 C-33/C-34 · 痛点总结 §4.4"
+    },
+    {
+      "id": "backup",
+      "name": "备份能力",
+      "category": "可靠性",
+      "group": "core",
+      "brief": "有状态数据是否有异机副本、能否真的恢复",
+      "deps": [],
+      "wires": [],
+      "params": [],
+      "apply": [
+        "备份的三要素：异机、定时、可恢复演练",
+        "!! 三份副本都在同一台机器上，不构成灾备"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get pvc -A",
+          "expect": "有状态组件的数据卷清单"
+        },
+        {
+          "cmd": "ls -lt <备份目录> | head",
+          "expect": "最新的备份时间在 24 小时内"
+        }
+      ],
+      "impact": "所有有状态组件",
+      "fallback": "—",
+      "note": "没有快照能力时，至少要把异机副本做成定时任务",
+      "source": "痛点总结 §4.2"
+    },
+    {
+      "id": "resource-limits",
+      "name": "资源配额与 OOM 防护",
+      "category": "可靠性",
+      "group": "dtstack",
+      "brief": "chart 默认 limits 往往按演示给，生产任务必然 OOM",
+      "deps": [],
+      "wires": [],
+      "params": [
+        {
+          "source": "组件 chart values",
+          "key": "resources.limits.memory",
+          "expect": "按实际任务调整",
+          "type": "地址",
+          "desc": "AIWorks 等解析类任务尤其需要"
+        }
+      ],
+      "apply": [
+        "按最大文档/批次规模反推 limits，不要沿用 chart 默认值",
+        "!! 升级或重部署后要回查该值有没有被默认值冲掉"
+      ],
+      "verify": [
+        {
+          "cmd": "kubectl get sts -A -o jsonpath='{range .items[*]}{.metadata.name}{\" \"}{.spec.template.spec.containers[0].resources.limits.memory}{\"\\n\"}{end}'",
+          "expect": "与实际任务规模匹配"
+        },
+        {
+          "cmd": "kubectl get pod -A -o jsonpath='{range .items[*]}{range .status.containerStatuses[*]}{.name}{\" \"}{.lastState.terminated.reason}{\"\\n\"}{end}{end}' | grep OOMKilled",
+          "expect": "无输出"
+        }
+      ],
+      "impact": "解析类 / 批处理任务",
+      "fallback": "改回原 limits 并重部署",
+      "note": "AIWorks 默认 2C/4G，解析千页文档必然 OOM",
+      "source": "痛点总结 §3.9"
+    }
+  ]
+}

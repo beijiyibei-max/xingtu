@@ -1,0 +1,6 @@
+{
+  "question": "上传显示完成，但是 Chart 列表少了一项，先检查哪里？",
+  "stepId": "verify-chart-inventory",
+  "stepVersion": "2.1.0",
+  "symptomOptionIds": ["chart-missing-after-upload"]
+}
