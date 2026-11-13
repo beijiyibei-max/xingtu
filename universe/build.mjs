@@ -4,7 +4,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 const here=dirname(fileURLToPath(import.meta.url)),old=resolve(here,'../legacy/immersive'),out=resolve(here,'../build');
 const {build}=await import(pathToFileURL(join(old,'node_modules/esbuild/lib/main.js')));
 await mkdir(out,{recursive:true});
-let main=await readFile(join(old,'src/main.js'),'utf8');
+let main=(await readFile(join(old,'src/main.js'),'utf8')).replace(/\r\n/g,'\n');
 const replace=(a,b)=>{if(!main.includes(a))throw Error('三维整合位置变化：'+a.slice(0,70));main=main.replace(a,b);};
 replace("import ForceGraph3D from '3d-force-graph';",`import ForceGraph3D from '3d-force-graph';\nimport {initK8s7} from ${JSON.stringify(join(here,'k8s-ui.js').replaceAll('\\','/'))};\nlet k8s7, sceneRequest=0;`);
 replace("  conflict: '冲突关系'","  selector: 'Service 选择器关联',\n  conflict: '冲突关系'");
