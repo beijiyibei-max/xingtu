@@ -1,22 +1,21 @@
 # CentOS Stream 9 上用 Docker 练习 Jenkins 发布星图
 
-练习目标是从 GitHub 私仓拉取星图，运行构建和测试，下载对应提交的发布产物，再手动更新测试实例。虚拟机当前地址为 `192.168.100.202`。
+练习目标是从 GitHub 公开仓库拉取星图，运行构建和测试，下载对应提交的发布产物，再手动更新测试实例。虚拟机当前地址为 `192.168.100.202`。
 
-## 1. 设置私仓并推送初始提交
-
-在 [xingtu 仓库设置](https://github.com/beijiyibei-max/xingtu/settings) 打开 **General → Danger Zone → Change repository visibility → Make private**，按页面提示确认。回到仓库主页看名称旁是否显示 **Private**。
+## 1. 推送到公开仓库
 
 本机的 `xingtu-github` 是准备好的独立源码目录。先查看提交内容，再用已登录的 GitHub 账号推送。
 
 ```powershell
 cd C:\Users\Administrator\Desktop\xuexi\xingtu-github
+git config --global --add safe.directory "C:/Users/Administrator/Desktop/xuexi/xingtu-github"
 git status
 git log -1 --oneline
 git ls-files
-git push -u origin main
+git -c "url.https://github.com/beijiyibei-max/xingtu.git.insteadOf=https://github.com/beijiyibei-max/xingtu.git" push -u origin main
 ```
 
-如果 GitHub CLI 登录过期，可在 Windows 上运行 `gh auth login -h github.com`，通过浏览器登录，然后执行 `gh auth setup-git` 并重试。GitHub 网页也可以完成仓库可见性设置。之后每次改动先建分支、提交、推送，合并到 `main` 后 Jenkins 拉取新版本。Jenkins 只持有本仓库的读取凭据。
+`safe.directory` 将此目录加入当前 Windows 用户的信任列表，解决 `detected dubious ownership`。推送命令中的 `-c` 让本次命令使用完整的 GitHub 域名，覆盖本机已有的 GitHub IP 地址重写。公开仓库可匿名拉取，推送时用拥有写权限的 GitHub 账号登录。如果 GitHub CLI 登录过期，在 Windows 上运行 `gh auth login -h github.com`，通过浏览器登录，然后执行 `gh auth setup-git` 并重试。之后每次改动先建分支、提交、推送，合并到 `main` 后 Jenkins 拉取新版本。
 
 ## 2. 在虚拟机安装 Docker Engine
 
@@ -78,23 +77,14 @@ docker compose logs --tail=30 agent
 
 3. 节点页面显示在线后，在控制器内置节点设置中把 executors 设为 `0`。构建由 Agent 执行，它通过容器网络向 Jenkins 建立 WebSocket，镜像带 JDK 21、Node.js、Python 和 Git。 [Jenkins Inbound Agent](https://github.com/jenkinsci/docker-agent/blob/master/README_inbound-agent.md) · [Jenkins Controller Isolation](https://www.jenkins.io/doc/book/security/controller-isolation/)
 
-## 5. Jenkins 连接 GitHub 私仓
+## 5. Jenkins 连接 GitHub 公开仓库
 
-在虚拟机生成仅给 Jenkins 使用的密钥。已存在同名文件时换一个文件名。
-
-```bash
-ssh-keygen -t ed25519 -C 'jenkins-xingtu-readonly' -f /root/.ssh/jenkins-xingtu
-cat /root/.ssh/jenkins-xingtu.pub
-```
-
-1. 在 GitHub 仓库的 **Settings → Deploy keys → Add deploy key** 粘贴公钥，保持 **Allow write access** 未勾选。
-2. 在 Jenkins 的 **Manage Jenkins → Credentials → System → Global credentials → Add Credentials**，Kind 选 **SSH Username with private key**，Username 填 `git`，ID 填 `github-xingtu-read`。在网页的 Private Key 输入框填写私钥。密钥有口令时，同页填写口令。
-3. 在 **Manage Jenkins → Security → Git Host Key Verification Configuration**，选 **Manually provided keys**，填入 GitHub 官方页面提供的 `github.com ssh-ed25519 ...` 公钥行。这一项验证 GitHub 服务器身份。
-4. 在 Jenkins 选 **New Item → Pipeline**。Definition 选 **Pipeline script from SCM**，SCM 选 Git，Repository URL 填 `git@github.com:beijiyibei-max/xingtu.git`，Credentials 选 `github-xingtu-read`，Branch Specifier 填 `*/main`，Script Path 填 `Jenkinsfile`。保存后点 **Build Now**。
+1. 在 GitHub 确认 `main` 分支已有 `Jenkinsfile`。
+2. 在 Jenkins 选 **New Item → Pipeline**。Definition 选 **Pipeline script from SCM**，SCM 选 Git，Repository URL 填 `https://github.com/beijiyibei-max/xingtu.git`，Credentials 选 **- 无 -**，Branch Specifier 填 `*/main`，Script Path 填 `Jenkinsfile`。保存后点 **Build Now**。
 
 构建按 **Checkout → Build → Verify → Archive** 运行。成功后在构建页下载 `xingtu-server.jar`、`SHA256SUMS`、`commit.txt` 及配套文件。首跑成功后，Jenkinsfile 中的 `pollSCM` 会约每五分钟检查一次 `main` 的更新。
 
-[GitHub Deploy Key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys#deploy-keys) · [GitHub SSH 主机公钥](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints) · [Jenkins Git 主机密钥验证](https://plugins.jenkins.io/git-client/#plugin-content-ssh-host-key-verification) · [Jenkins Poll SCM](https://www.jenkins.io/doc/book/pipeline/syntax/#triggers)
+[Jenkins Git 插件](https://plugins.jenkins.io/git/) · [Jenkins Poll SCM](https://www.jenkins.io/doc/book/pipeline/syntax/#triggers)
 
 ## 6. 练习发布、升级和回滚
 
