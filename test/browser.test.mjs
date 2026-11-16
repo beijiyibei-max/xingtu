@@ -204,6 +204,24 @@ try{
  const readDownloaded=async path=>{for(let i=0;i<30;i++){try{return await readFile(path,'utf8');}catch{await sleep(100);}}throw Error('下载未生成');};
  const progress=JSON.parse(await readDownloaded(progressFile)),report=await readDownloaded(reportFile);
  check('下载的 JSON 和交接清单保存卡点与验收结果',progress.records.architecture.status==='blocked' && report.includes('等现场确认或变更窗口') && report.includes('已通过'));
+ await evalJS('document.getElementById("order-setup").open=true');
+ await set('#order-create [name=target]','preview-node');
+ await set('#order-create [name=context]','preview-context');
+ await evalJS('document.querySelector("#order-create [name=confirmed]").checked=true;document.querySelector("#order-create [name=storeConsent]").checked=true;document.getElementById("order-create").requestSubmit()');
+ await wait('document.querySelector(".order-summary h3")?.textContent.includes("E2E")','服务器生成项目操作单');
+ check('页面生成 62 步操作单且不假装获得执行批准',await evalJS('document.querySelectorAll("#order-step option").length===62 && document.querySelector(".order-summary").textContent.includes("草稿")'));
+ await evalJS('document.getElementById("order-step").value="k8s-check";document.getElementById("order-step").dispatchEvent(new Event("change"))');
+ await wait('document.querySelector(".order-card pre")?.textContent.includes("kubectl")','生成本项目检查命令');
+ check('实际页面中的检查命令绑定 context',await evalJS('document.querySelector(".order-card pre").textContent.includes("preview-context")'));
+ await evalJS('document.querySelector(".order-card").open=true;document.getElementById("deployment-orders").scrollIntoView()');
+ const orderShot=await page.send('Page.captureScreenshot',{format:'png'});await writeFile(join(root,'preview-deployment-orders.png'),Buffer.from(orderShot.data,'base64'));
+ await evalJS('document.getElementById("order-step").value="scope";document.getElementById("order-step").dispatchEvent(new Event("change"))');
+ await wait('document.querySelector("#order-checks [name=reference]")!==null','核对记录表');
+ await evalJS('document.querySelectorAll("#order-checks [name=check]").forEach(x=>x.checked=true);document.querySelector("#order-checks [name=reference]").value="review-local";document.getElementById("order-checks").requestSubmit()');
+ await wait('document.querySelector(".order-summary h3")?.textContent.includes("第 2 版")','保存人工核对记录');
+ await nav('/deployment');
+ await wait('document.querySelector(".order-summary h3")?.textContent.includes("第 2 版")','刷新恢复操作单');
+ check('刷新后服务器操作单恢复核对记录并定位下一步',await evalJS('document.getElementById("order-step").value==="host" && document.querySelector("#order-step option").textContent.includes("已人工核对")'));
  await page.send('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:0,uploadThroughput:0});
  await page.send('Page.navigate',{url:pathToFileURL(join(root,'dist/数栈7.0部署向导.html')).href});
  await wait('location.protocol==="file:" && document.querySelectorAll("[data-step]").length===62','断网打开单文件向导');
@@ -251,6 +269,6 @@ try{
  check('断网刷新后恢复同一报错分支',await evalJS('document.querySelector(".walk-top").textContent.includes("已记录卡点")'));
  await click('[data-walk=retry]');
  check('复查回到同一动作并保留卡点状态',await evalJS('document.querySelector("#walk-screen h2").textContent.includes("打开 EM 登录页") && JSON.parse(localStorage.getItem("xingtu-deployment-progress-v1")).records["em-bind"].status==="blocked"'));
- check('向导只在本机保存与导入导出，没有发送 API 请求',requests.slice(beforeGuide).every(url=>!url.includes('/api/')));
+ check('部署操作单只请求本机星图，未请求外部环境或助手',requests.slice(beforeGuide).filter(url=>url.includes('/api/')).every(url=>url.startsWith(app.base+'/api/deployment/plans')));
  check('所有页面没有未捕获脚本错误',exceptions.length===0);console.log(`${count} browser checks passed`);
 }finally{if(browser)await browser.send('Browser.close').catch(()=>{});page?.ws.close();browser?.ws.close();chrome.kill();await app.stop();}

@@ -1,5 +1,44 @@
 # CentOS Stream 9 上用 Docker 练习 Jenkins 发布星图
 
+## 已有环境：一个命令更新
+
+适用于现有同机环境：Jenkins 作业 `xingtu-ci`、容器 `xingtu-test-xingtu-1`、数据卷 `xingtu-test-data`、配置 `/opt/xingtu-test/service.env`。无需重新安装 Jenkins 或配置凭据。此入口不会推送本机代码，需先推送 GitHub 并等 Jenkins 构建成功。
+
+首次在 Windows PowerShell 上传一次：
+
+```powershell
+scp C:\Users\Administrator\Desktop\xuexi\xingtu-github\ci\xingtu-update.sh root@192.168.100.202:/opt/xingtu-ci/
+```
+
+以后每次在虚拟机执行：
+
+```bash
+bash /opt/xingtu-ci/xingtu-update.sh
+```
+
+脚本从本机 Jenkins 控制器的默认归档目录读取最近的成功构建，自动取包、校验 JAR、构建镜像、短暂停服备份数据、替换容器并检查健康状态。保留当前 IPv4 地址、端口、登录配置和数据卷；相同提交且服务健康时不重复替换。默认使用“最近成功构建”，并非正在构建或失败的最新编号，请核对输出的构建号和提交号。当前旧流水线的 SHA256SUMS 仅覆盖 JAR，不代表全包签名校验。
+
+若要准确指定已成功的构建号，如 3：
+
+```bash
+bash /opt/xingtu-ci/xingtu-update.sh 3
+```
+
+查询状态或切回上次升级前镜像：
+
+```bash
+bash /opt/xingtu-ci/xingtu-update.sh status
+bash /opt/xingtu-ci/xingtu-update.sh rollback
+```
+
+构建或校验失败不会停止旧服务；备份失败会恢复启动旧容器；切换或健康检查失败会报告错误并保留回退点，不会伪报成功。回退仅恢复镜像和运行环境，不自动覆盖新写入的数据。涉及数据格式变更时，应按版本说明评估数据恢复。备份含运行凭据和项目数据，仅保留在服务器受限目录，不应上传 GitHub。
+
+回退的环境文件采用 Compose 2.30+ 的 `format: raw`，保留值中的 `$`、引号等字符；现有截图中的 Compose 5.7.1 满足版本要求。[Docker 官方说明](https://docs.docker.com/reference/compose-file/services/#format)
+
+验收：终端显示「升级成功」，随后打开 `http://192.168.100.202:22648/deployment` 并刷新页面检查。首次使用前提是已有星图 Docker 实例；此脚本不是首次安装器。备份和镜像不会自动删除。若改了 Jenkins 作业名、使用外置产物存储，或扩展了星图挂载/运行参数，应先调整脚本再使用。
+
+本地验证：`node --test test/update-script.test.mjs` 使用真实 Bash 和模拟 Docker/HTTP，验证正常更新、校验/构建/备份/启动/健康失败、回退、重复更新及互斥；不代表已经在虚拟机实机发布。
+
 练习目标是从 GitHub 公开仓库拉取星图，运行构建和测试，下载对应提交的发布产物，再手动更新测试实例。虚拟机当前地址为 `192.168.100.202`。
 
 ## 1. 推送到公开仓库

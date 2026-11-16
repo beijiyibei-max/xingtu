@@ -4,6 +4,7 @@ import {initYamlReview} from './yaml-review-ui.mjs';
 import {initHostCheck} from './host-check-ui.mjs';
 import {initCompanion} from './companion-ui.mjs';
 import {initDeploymentAssistant} from './assistant-ui.mjs';
+import {initDeploymentOrders} from './orders-ui.mjs';
 
 const phases = DEPLOYMENT_FLOW;
 const steps = phases.flatMap(phase => phase.steps);
@@ -502,5 +503,6 @@ companion=initCompanion({
   exportReport:()=>byId('report').click(),
 });
 initDeploymentAssistant(steps);
+initDeploymentOrders(()=>plan.scope);
 fillScope();
 show(firstOpen());

@@ -16,6 +16,7 @@ final class DeploymentAssistant {
     private final Semaphore slots=new Semaphore(2);
     private final Deque<Long> requests=new ArrayDeque<>();
     private final Map<String,Object> catalog;
+    private final DeploymentPlans plans;
     private final String endpoint=HttpUtil.env("XT_HERMES_URL","http://127.0.0.1:8642");
     private final String keyFile=HttpUtil.env("XT_HERMES_KEY_FILE","");
     private final boolean enabled=Boolean.parseBoolean(HttpUtil.env("XT_HERMES_ENABLED","false"));
@@ -25,7 +26,8 @@ final class DeploymentAssistant {
         "\\bBearer\\s+|[a-f0-9]*:[a-f0-9:]*:[a-f0-9:]+|"+
         "[\\w.+-]+@[\\w.-]+|[\\w-]+\\.(?:com|cn|net|org|local|internal)\\b|"+
         "(?m:^[ \\t]*[\\w.-]+:\\s+\\S)|\\bTraceback\\b|\\n\\s*at ");
-    DeploymentAssistant() throws IOException {
+    DeploymentAssistant(DeploymentPlans plans) throws IOException {
+        this.plans=plans;
         catalog=HttpUtil.object(Json.parse(new String(HttpUtil.resource("/fixtures/deployment-assistant.json"),StandardCharsets.UTF_8)));
         URI uri=URI.create(endpoint);
         boolean local=Set.of("localhost","127.0.0.1","[::1]").contains(uri.getHost()==null?"":uri.getHost());
@@ -41,6 +43,7 @@ final class DeploymentAssistant {
             HttpUtil.send(ex,200,HttpUtil.map("configured",configured(),"stepVersion","2.1.0"));return;
         }
         HttpUtil.method(ex,"POST");
+        if(!"yes".equals(ex.getRequestHeaders().getFirst("X-Xingtu-Ask-Consent"))){reply(ex,refused("consent-required"));return;}
         Map<String,Object> body=HttpUtil.jsonBody(ex,4096);
         HttpUtil.fields(body,"question","stepId","stepVersion","symptomOptionIds");
         String question=HttpUtil.string(body,"question",600),step=HttpUtil.string(body,"stepId",80);
@@ -52,13 +55,26 @@ final class DeploymentAssistant {
             reply(ex,refused("invalid-request"));return;
         }
         String normalized=java.text.Normalizer.normalize(question,java.text.Normalizer.Form.NFKC);
+        List<String> projectValues=new ArrayList<>();
+        String projectId=ex.getRequestHeaders().getFirst("X-Xingtu-Project");
+        if(projectId!=null){
+            var project=plans.assistantProject(projectId);
+            if(!Boolean.TRUE.equals(project.get("allowAssistant"))){reply(ex,refused("project-forbidden"));return;}
+            var scope=HttpUtil.object(project.get("scope"));
+            for(Object privateValue:List.of(project.get("target"),project.get("context"),scope.get("alias"),scope.get("ns"),scope.get("emNs"))){
+                String value=String.valueOf(privateValue);
+                if(value.length()>=3)projectValues.add(value.toLowerCase(Locale.ROOT));
+            }
+        }
         for(int i=0;i<3;i++){
-            if(PRIVATE.matcher(normalized).find()){reply(ex,refused("sensitive-content"));return;}
+            final String form=normalized.toLowerCase(Locale.ROOT);
+            if(PRIVATE.matcher(normalized).find()||projectValues.stream().anyMatch(form::contains)){reply(ex,refused("sensitive-content"));return;}
             try{normalized=java.net.URLDecoder.decode(normalized,StandardCharsets.UTF_8);}catch(IllegalArgumentException e){break;}
         }
         for(String word:normalized.split("\\s+")){
             if(word.length()<12)continue;
-            try{if(PRIVATE.matcher(new String(Base64.getDecoder().decode(word),StandardCharsets.UTF_8)).find()){
+            try{String decoded=new String(Base64.getDecoder().decode(word),StandardCharsets.UTF_8);
+                if(PRIVATE.matcher(decoded).find()||projectValues.stream().anyMatch(decoded.toLowerCase(Locale.ROOT)::contains)){
                 reply(ex,refused("sensitive-content"));return;
             }}catch(IllegalArgumentException ignored){}
         }
@@ -74,7 +90,7 @@ final class DeploymentAssistant {
             String key=Files.readString(Path.of(keyFile)).strip();
             Map<String,Object> tools=remote("/v1/toolsets",null,key);
             if(!(tools.get("data") instanceof List<?> toolsets)||toolsets.stream().anyMatch(item->
-                !(item instanceof Map<?,?> m)||Boolean.TRUE.equals(m.get("enabled")))){
+                !(item instanceof Map<?,?> m)||!Boolean.FALSE.equals(m.get("enabled")))){
                 reply(ex,refused("provider-not-approved"));return;
             }
             Map<String,Object> knowledge=HttpUtil.object(catalog.get(step));
@@ -82,7 +98,8 @@ final class DeploymentAssistant {
                 "缺少依据时返回 {\"status\":\"no-match\",\"reason\":\"insufficient-evidence\"}。"+
                 "否则只输出 JSON，字段 status=answered,nextCheck,where,expected,ifDifferent,以及 references 数组。"+
                 "references 只允许当前 stepId="+step+"，stepVersion=2.1.0，sourceId=xingtu-"+step+
-                "。建议只提供一项下一步检查。通用知识："+Json.stringify(knowledge);
+                "。references 的格式必须为 "+Json.stringify(List.of(HttpUtil.map("stepId",step,"stepVersion",version,"sourceId","xingtu-"+step)))+
+                "。建议只提供一项下一步检查，不输出 Markdown 代码围栏。通用知识："+Json.stringify(knowledge);
             Map<String,Object> result=remote("/v1/chat/completions",HttpUtil.map(
                 "model","hermes-agent","stream",false,"messages",List.of(
                     HttpUtil.map("role","system","content",instruction),
@@ -93,13 +110,19 @@ final class DeploymentAssistant {
             if(!"stop".equals(choice.get("finish_reason")))throw new IOException();
             Object rawContent=HttpUtil.object(choice.get("message")).get("content");
             if(!(rawContent instanceof String content)||content.length()>12000)throw new IOException();
-            Map<String,Object> answer=HttpUtil.object(Json.parse(content));
+            String json=content.strip();
+            if(json.startsWith("```json\n")&&json.endsWith("\n```"))json=json.substring(8,json.length()-4);
+            else if(json.startsWith("```\n")&&json.endsWith("\n```"))json=json.substring(4,json.length()-4);
+            Map<String,Object> answer=HttpUtil.object(Json.parse(json));
             if("no-match".equals(answer.get("status"))){
                 reply(ex,HttpUtil.map("status","no-match","reason","insufficient-evidence"));return;
             }
             HttpUtil.fields(answer,"status","nextCheck","where","expected","ifDifferent","references");
             if(!"answered".equals(answer.get("status")))throw new IOException();
-            for(String field:List.of("nextCheck","where","expected","ifDifferent"))HttpUtil.string(answer,field,1600);
+            for(String field:List.of("nextCheck","where","expected","ifDifferent")){
+                if(!(answer.get(field) instanceof String text)||text.isBlank()||text.length()>1600||
+                    text.chars().anyMatch(c->c<32&&c!='\n'&&c!='\r'&&c!='\t'))throw new IOException();
+            }
             if(!(answer.get("references") instanceof List<?> refs)||refs.isEmpty()||refs.size()>8)throw new IOException();
             for(Object value:refs){
                 Map<String,Object> ref=HttpUtil.object(value);

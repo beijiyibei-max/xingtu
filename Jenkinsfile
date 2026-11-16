@@ -37,6 +37,7 @@ pipeline {
                     export XT_CONTRACT_PYTHON="$PWD/.venv/bin/python"
                     python -m unittest discover -s test -p test_deployment_contract.py -v
                     node --test --test-timeout=90000 test/server.test.mjs test/launcher.test.mjs test/topology.test.mjs test/yaml-review.test.mjs test/host-check.test.mjs test/companion-flow.test.mjs test/deployment-assistant.test.mjs
+                    node --test --test-timeout=300000 test/update-script.test.mjs
                 '''
             }
         }

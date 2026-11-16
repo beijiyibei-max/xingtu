@@ -36,6 +36,7 @@ const output = await build({
 });
 const script = output.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
 const css = await read('style.css');
+await writeFile(resolve(root,'../build/fixtures/deployment-plan.json'),JSON.stringify(steps));
 await writeFile(resolve(root,'../build/fixtures/deployment-assistant.json'),JSON.stringify(
   Object.fromEntries(steps.map(step=>[step.id,{title:step.title,sources:step.sources,
     guidance:step.tutorial.map(card=>({title:card.title,target:card.target,normal:card.normal,

@@ -19,10 +19,11 @@ public final class XingtuServer {
     private final Legacy legacy;
     private final K8sTopology topology;
     private final DeploymentAssistant deploymentAssistant;
+    private final DeploymentPlans deploymentPlans;
     private final DeploymentContract deploymentContract=new DeploymentContract();
-    private static final String VERSION = "3.3.8";
+    private static final String VERSION = "3.3.9";
     private static final Map<String,String> PAGES=Map.ofEntries(Map.entry("/","index.html"),Map.entry("/deployment","deployment.html"),Map.entry("/workbench","workbench.html"),Map.entry("/criteria","criteria.html"),Map.entry("/operations","operations.html"),Map.entry("/universe","universe.html"),Map.entry("/confidential","confidential.html"),Map.entry("/map","map.html"),Map.entry("/login","login.html"),Map.entry("/index.html","index.html"));
-    private XingtuServer(Path data,String token)throws IOException{auth=new Auth(token);vault=new Vault(data);evidence=new EvidenceStore(data);legacy=new Legacy();topology=new K8sTopology(data);deploymentAssistant=new DeploymentAssistant();}
+    private XingtuServer(Path data,String token)throws IOException{auth=new Auth(token);vault=new Vault(data);evidence=new EvidenceStore(data);legacy=new Legacy();topology=new K8sTopology(data);deploymentPlans=new DeploymentPlans(data);deploymentAssistant=new DeploymentAssistant(deploymentPlans);}
     public static void main(String[] args)throws Exception{
         if(args.length>0&&args[0].equals("--init-config")){init(args.length>1?Paths.get(args[1]):Paths.get("."));return;}
         String token=HttpUtil.env("XT_ACCESS_TOKEN","");String file=HttpUtil.env("XT_ACCESS_TOKEN_FILE","");if(!file.isEmpty()){if(!token.isEmpty())throw new IllegalArgumentException("密钥环境变量与密钥文件只能选择一个");token=Files.readString(Paths.get(file)).strip();}
@@ -52,6 +53,7 @@ public final class XingtuServer {
             if(path.startsWith("/api/")){
                 auth.require(ex);
                 if(path.equals("/api/deployment/ask")){deploymentAssistant.handle(ex);return;}
+                if(path.equals("/api/deployment/plans")||path.startsWith("/api/deployment/plans/")){deploymentPlans.handle(ex,path);return;}
                 if(path.equals("/api/deployment/validate")){deploymentContract.handle(ex);return;}
                 if(path.startsWith("/api/k8s/")){topology.handle(ex,path);return;}
                 if(path.equals("/api/session")){HttpUtil.method(ex,"GET");HttpUtil.send(ex,200,HttpUtil.map("authenticated",true,"accessModel","shared-key"));return;}

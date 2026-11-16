@@ -19,10 +19,13 @@ export function initDeploymentAssistant(steps) {
     <div id="contract-answer" class="assistant-answer" role="status"></div></details>`;
   document.querySelector('#walk-screen').after(panel);
   const find=id=>panel.querySelector('#'+id);
-  let current=steps[0],controller,sequence=0;
+  let current=steps[0],controller,sequence=0,project=null;
+  document.addEventListener('deployment-plan-selected',event=>{
+    project=event.detail;sequence++;controller?.abort();find('ask-consent').checked=false;find('ask-answer').textContent='';
+  });
   const setStep=step=>{
     if(!step)return;
-    if(current.id!==step.id){sequence++;controller?.abort();find('ask-answer').textContent='';find('ask-question').value='';}
+    if(current.id!==step.id){sequence++;controller?.abort();find('ask-answer').textContent='';find('ask-question').value='';find('ask-consent').checked=false;}
     current=step;find('ask-step').textContent='当前步骤 · '+step.title;
   };
   setStep(current);
@@ -36,13 +39,14 @@ export function initDeploymentAssistant(steps) {
     event.preventDefault();
     const out=find('ask-answer');
     if(location.protocol==='file:'||!find('ask-consent').checked){out.textContent=fallback();return;}
+    if(project&&!project.allowAssistant){out.textContent='当前项目未允许外部助手。\n\n'+fallback();return;}
     const requestId=++sequence;
     controller?.abort();controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),28000);
     const button=event.target.querySelector('button');button.disabled=true;
     out.textContent='正在核对这一步…';
     try{
-      const response=await fetch('/api/deployment/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+      const response=await fetch('/api/deployment/ask',{method:'POST',headers:{'Content-Type':'application/json','X-Xingtu-Ask-Consent':'yes',...(project?{'X-Xingtu-Project':project.id}:{})},
         signal:controller.signal,body:JSON.stringify({question:find('ask-question').value.trim(),stepId:current.id,
           stepVersion:'2.1.0',symptomOptionIds:[]})});
       const data=await response.json();
@@ -58,7 +62,7 @@ export function initDeploymentAssistant(steps) {
         out.textContent=(reasons[data.reason]||data.error?.message||'本次未取得可核验的助手回答。')+'\n\n'+fallback();
       }
     }catch(error){if(requestId===sequence)out.textContent='服务暂时不可用。\n\n'+fallback();}
-    finally{clearTimeout(timeout);button.disabled=false;}
+    finally{clearTimeout(timeout);button.disabled=false;find('ask-consent').checked=false;}
   };
   find('contract-form').onsubmit=async event=>{
     event.preventDefault();const out=find('contract-answer'),form=event.target;

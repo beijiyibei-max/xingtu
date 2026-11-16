@@ -309,3 +309,20 @@ footer { padding-block: 1.35rem; color: var(--muted); font-size: .86rem; }
  .assistant-answer { white-space:pre-wrap; line-height:1.8; margin-top:16px; overflow-wrap:anywhere; }
  #ask-form textarea { display:block; width:100%; box-sizing:border-box; margin:10px 0; padding:12px; color:inherit; background:#09172a; border:1px solid #385576; border-radius:10px; font:inherit; }
  #contract-form label { display:block; margin:12px 0; }
+ .order-workspace { margin:20px 0;padding:26px;background:linear-gradient(135deg,#0d1e36,#10182b);border:1px solid #295377;border-radius:20px; }
+ .order-heading {display:flex;align-items:start;justify-content:space-between;gap:18px}
+ .order-heading h2 {margin:5px 0 10px;color:#dcf2ff}
+ .order-badge {padding:8px 12px;border-radius:99px;border:1px solid #368a9e;color:#86e1d9;font-size:12px;white-space:nowrap}
+ .order-controls {display:flex;align-items:end;gap:12px;margin:16px 0}
+ .order-controls label {flex:1}
+ .order-summary {padding:16px;background:#0a1325;border-radius:12px;margin:12px 0}
+ .order-summary select {width:min(100%,580px);margin-right:12px}
+ .order-card {border:1px solid #29415e;border-radius:12px;padding:14px 18px;margin:12px 0}
+ .order-card summary {font-weight:650;cursor:pointer}
+ .order-card pre {white-space:pre-wrap;overflow-wrap:anywhere;background:#070e1d;padding:14px;border-radius:8px;color:#c3ebdf}
+ .order-workspace label {display:block;margin:10px 0}
+ .order-workspace .check {display:flex}
+ .order-warning {color:#ffd48c}
+ #order-checks {padding:18px;background:#111e32;border-radius:12px}
+ #order-checks button {margin:12px 10px 0 0}
+ @media(max-width:700px){.order-heading,.order-controls{flex-direction:column}.order-workspace{padding:16px}}

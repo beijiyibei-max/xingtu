@@ -1,4 +1,44 @@
-# 星图 V3.3.8 · Java 服务器版
+# 星图 V3.3.9 · Java 服务器版
+
+## 本轮新增：本项目操作单与真实问答
+
+打开 `/deployment`，原来的部署陪跑、62 步教学、272 张教学卡、YAML 体检、7.0 图谱及其他模块仍保留。
+
+1. 先在原陪跑入口选择新装或复用路线、存储方式，保存项目设置。
+2. 展开「我的部署操作单 → 生成或重新生成」，填写目标标识。集群已存在时填写核实过的 context；从零安装时可留空，先做主机准备。
+3. 确认项目值及服务器保存许可，生成项目草稿。每张卡展示执行位置、正常输出、错误原因、处理与复验；Pod 等具体参数按当前卡填写。
+4. 服务器按内置模板生成检查命令，所有 kubectl 检查绑定本项目 context。参数缺失、未确认、格式非法、旧页面版本或复用路线的安装卡会被拦截。
+5. 核对全部验收项并填写现场记录编号后保存。服务重启、浏览器刷新均可恢复；可选组件可以凭实施单编号标记范围外。重开前置步骤会清除后续人工记录，重新生成会使旧版页面失效。升级后若教学模板摘要变化，旧记录标为待重验，禁止继续复制命令或保存核对结果，需重新生成后核验。
+
+这些草稿存放在 `XT_DATA_DIR/deployment-plans`，属于当前共享密钥下的个人工作流，包含项目代号、Namespace、目标标识和核对编号，以明文保存在获准的星图服务器上。需要保密现场固定选项模式时，继续使用原「保密现场」入口。原项目工作台的加密备份机制独立保留。
+
+草稿的 `kind` 为 `xingtu-deployment-draft`，不冒充已经验收的 V2.1 正式操作单。人工记录使用 `recorded`，不伪造证据包的 `pass`；接口始终返回 `executionApproved=false`。正式物料锁、目标指纹、独立复核及高风险闸门仍走 V2.1 契约，当前新增草稿入口只放行检查命令。不要把草稿 JSON 送进「检查本次操作单」当作正式契约。
+
+### 本机体验
+
+已经构建后，在源码目录执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start-project-preview.ps1
+```
+
+打开 `http://127.0.0.1:22649/deployment`。首次生成的登录密钥位于 `runlogs/project-preview/service.env` 的 `XT_ACCESS_TOKEN` 行，原虚拟机实例与密钥不变。
+
+本机已经安装 DeepSeek Hermes 时，可启用后台问答：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start-project-preview.ps1 -WithAssistant
+```
+
+此入口使用独立的 `runlogs/hermes-advice` 配置，Hermes 监听本机 `8643`，工具、MCP 和记忆关闭；原 Hermes 配置不修改。需要重启预览时，核对 `runlogs/project-preview/server.pid` 所对应的是本次 Java 进程后停止它，再运行入口。不要重复启动占用同一端口的实例。
+
+「问星图」只发送通用问题、当前步骤标识及整理过的教学摘要。项目值、操作单、日志和历史问答不附加到请求；项目不允许助手或本次未确认时只给本地建议。服务器再次检查使用许可、敏感内容及工具状态，回答必须引用当前步骤和版本。每次回答后重新勾选发送许可。模型拒答、超时、格式或来源不合规时返回本地建议。
+
+2026-11-14 已使用通用 NotReady 问题实测本机 Java → Hermes → DeepSeek 返回 `answered`，来源指向 `k8s-check / 2.1.0`。此结果是本机链路验证。服务器部署时，`127.0.0.1` 指向星图所在服务器或容器；虚拟机版需配置它实际可达的获准 Hermes 地址，远端地址要求 HTTPS。
+
+### 验证方式
+
+常规测试沿用现有 Jenkinsfile。新增操作单和助手边界用例并入 `test/deployment-assistant.test.mjs`，无需更改 Jenkins 配置。本机有 Chrome 时可额外运行 `node test/browser.test.mjs`，使用独立浏览器资料目录测试原有页面、操作单生成与刷新恢复，生成的 `preview-*.png` 不进入 Git。
 
 原功能保留，统一通过浏览器访问。运行只需要 **Java 17+**；独立 JAR 内已带全部页面与脱敏演示资料，不要求服务器安装 Node、数据库或 Kubernetes 工具。旧版目录不改动。
 
