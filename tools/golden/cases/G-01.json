@@ -1,0 +1,22 @@
+{
+  "id": "G-01",
+  "type": "config",
+  "source_ref": "VOLC-D15",
+  "expected_top1": "common-config 停留在参考环境残留，若干 global.* 未替换为本项目实际值",
+  "equivalent_answers": [
+    "配置指向参考环境未替换",
+    "global.* 仍是旧环境（minio / S3 / 域名）",
+    "未按本项目基线改配置"
+  ],
+  "evidence_anchor": "",
+  "evidence_must_contain": "",
+  "allowed_inference": [
+    "哪个键才是本项目真实值 —— 需基线对比"
+  ],
+  "false_positive_trap": "把项目自定义的合法值误判成残留；或只报“可能有问题”却指不出具体键",
+  "judge_command": "grep -nE 'global\\.(minio|s3|domain|host)' common-config.yaml",
+  "missing_info_required": false,
+  "confirmed": false,
+  "confirmed_by": "",
+  "notes": "取件后先填 evidence_anchor（具体键所在行），再签字。这是唯一验证“多基线 diff”是否成立的样本。"
+}

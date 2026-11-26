@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "note": "样本原件因 .gitignore 的 *.log 不入仓；绝对路径与 sha256 存在 fixtures.local.json（同样不入仓）。标注卡由人签字，AI 不许自签。",
+  "cases": [
+    {
+      "id": "G-01",
+      "type": "config",
+      "status": "pending",
+      "source_ref": "VOLC-D15",
+      "case": "cases/G-01.json",
+      "fixture_ref": "G-01",
+      "blocked_by": "需现场取 common-config.yaml 并脱敏"
+    },
+    {
+      "id": "G-02",
+      "type": "config",
+      "status": "pending",
+      "source_ref": "VOLC-D13-S39",
+      "case": "cases/G-02.json",
+      "fixture_ref": "G-02",
+      "blocked_by": "需现场取卡住 Pod 的 kubectl get pod -o yaml（不是控制器模板）"
+    },
+    {
+      "id": "G-03",
+      "type": "log",
+      "status": "ready",
+      "source_ref": "NX-YARN",
+      "case": "cases/G-03.json",
+      "fixture_ref": "G-03"
+    },
+    {
+      "id": "G-04",
+      "type": "log",
+      "status": "ready",
+      "source_ref": "VOLC-IDE",
+      "case": "cases/G-04.json",
+      "fixture_ref": "G-04"
+    },
+    {
+      "id": "G-05",
+      "type": "log",
+      "status": "pending",
+      "source_ref": "VOLC-D12",
+      "case": "cases/G-05.json",
+      "fixture_ref": "G-05",
+      "blocked_by": "需现场取 dtuic Pod 日志（锁等待段）"
+    }
+  ]
+}

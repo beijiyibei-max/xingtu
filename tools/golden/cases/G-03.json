@@ -1,0 +1,22 @@
+{
+  "id": "G-03",
+  "type": "log",
+  "source_ref": "NX-YARN",
+  "expected_top1": "运行侧 guava 版本冲突导致 NoSuchMethodError（表象是 HDFS 文件系统创建失败）",
+  "equivalent_answers": [
+    "guava 冲突",
+    "guava 版本不兼容 / 被依赖覆盖",
+    "NoSuchMethodError: Preconditions.checkArgument"
+  ],
+  "evidence_anchor": "line 326（NoSuchMethodError: com.google.common.base.Preconditions.checkArgument），同栈另见 414、897",
+  "evidence_must_contain": "com.google.common.base.Preconditions.checkArgument",
+  "allowed_inference": [
+    "具体是哪个组件覆盖了 guava —— 需看 classpath 或依赖树"
+  ],
+  "false_positive_trap": "归因到 HDFS 集群不可用（Could not create FileSystem hdfs://ns1/...）—— 那是表象",
+  "judge_command": "grep -n 'NoSuchMethodError' yarn_0017_admin.log | head -3",
+  "missing_info_required": false,
+  "confirmed": false,
+  "confirmed_by": "",
+  "notes": "行号为本机实测（grep -n 命中 326/414/897）；文件内含 14 处 Caused by 行，需确认为 5 层嵌套。"
+}

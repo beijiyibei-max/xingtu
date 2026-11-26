@@ -1,0 +1,22 @@
+{
+  "id": "G-02",
+  "type": "config",
+  "source_ref": "VOLC-D13-S39",
+  "expected_top1": "init 容器缺 restartPolicy: Always（必须看 Pod 自身，不看控制器模板）",
+  "equivalent_answers": [
+    "init 容器 restartPolicy 丢失",
+    "sidecar 模板未下发 restartPolicy",
+    "initContainers 缺少 restartPolicy 字段"
+  ],
+  "evidence_anchor": "",
+  "evidence_must_contain": "initContainers",
+  "allowed_inference": [
+    "是 EM 模板生成时丢的，而不是手工改 Pod 丢的"
+  ],
+  "false_positive_trap": "只查控制器模板/只看 Pod 状态就下结论；或把 Init:0/N 归因到镜像拉取失败",
+  "judge_command": "kubectl -n dtstack get pod <stuck-pod> -o jsonpath='{range .spec.initContainers[*]}{.name}{\" \"}{.restartPolicy}{\"\\n\"}{end}'",
+  "missing_info_required": false,
+  "confirmed": false,
+  "confirmed_by": "",
+  "notes": "本环境复发 7 次，是最有统计意义的样本；判据确定性可查，不依赖模型。"
+}

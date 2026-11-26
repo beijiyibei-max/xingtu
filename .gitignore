@@ -16,3 +16,9 @@ service.env
 *.jar
 *.log
 preview-*.png
+# golden set：样本原件与本地路径映射含客户信息，不入仓
+tools/golden/fixtures.local.json
+tools/golden/*.log
+tools/golden/*.yaml
+# hermes verify 的本机配方，不入仓
+.hermes/

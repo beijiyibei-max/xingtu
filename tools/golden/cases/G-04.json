@@ -1,0 +1,23 @@
+{
+  "id": "G-04",
+  "type": "log",
+  "source_ref": "VOLC-IDE",
+  "expected_top1": "EM 调 apiserver 的客户端初始化失败（证书 / 权限 / 网络三者之一，日志不足以区分）",
+  "equivalent_answers": [
+    "Kubernetes 客户端初始化失败",
+    "EM 到 apiserver 连接/鉴权失败",
+    "fabric8 client 创建失败"
+  ],
+  "evidence_anchor": "line 2（ClientAccessException），line 31 / 36（Caused by ExecutionException → RdosDefineException）",
+  "evidence_must_contain": "ClientAccessException",
+  "allowed_inference": [
+    "三者中更可能是哪个 —— 必须同时给出验证路径"
+  ],
+  "false_positive_trap": "编一个具体根因（如“证书过期”）却不给验证路径；或只说“检查网络”",
+  "judge_command": "grep -n 'ClientAccessException' dtstack_ide_*.log | head -3",
+  "missing_info_required": true,
+  "missing_info_expected": "HTTP 状态码、apiserver 地址、证书校验结果",
+  "confirmed": false,
+  "confirmed_by": "",
+  "notes": "压“编根因”的对照组：missing_info 为空即判定失败。"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "G-05",
+  "type": "log",
+  "source_ref": "VOLC-D12",
+  "expected_top1": "init-sql 会话持有元数据锁未释放，dtuic 启动卡在锁等待",
+  "equivalent_answers": [
+    "init-sql 持锁",
+    "元数据锁未释放导致启动阻塞",
+    "Lock wait timeout / metadata lock"
+  ],
+  "evidence_anchor": "",
+  "evidence_must_contain": "Lock wait timeout",
+  "allowed_inference": [
+    "持锁会话具体是谁 —— 需 show processlist 确认"
+  ],
+  "false_positive_trap": "把“启动慢”当根因；或建议直接重启数据库，而不是先只读查锁",
+  "judge_command": "show processlist;  -- 只读，找 init-sql 会话持锁",
+  "missing_info_required": false,
+  "confirmed": false,
+  "confirmed_by": "",
+  "notes": "处置有明确成功标志（日志末行出现“释放数据库锁”），可直接用于验收“验证命令有效”。"
+}
