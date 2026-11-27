@@ -21,7 +21,6 @@ export function initDeploymentOrders(getScope) {
   let cardIndex=0;
   const cardCache=new Map();      // revision::stepId -> Promise<cards>，避免来回翻页重复请求
   const paramStore=new Map();     // stepId::cardIndex -> 已填参数，翻页和切步骤都不丢
-  const executedCards=new Set();  // 本会话内标记「我已执行」的卡片
   const offline=location.protocol==='file:';
   const announce=text=>{find('order-message').textContent=text;};
   const publish=()=>document.dispatchEvent(new CustomEvent('deployment-plan-selected',{detail:active?{id:active.id,allowAssistant:active.allowAssistant}:null}));
@@ -53,7 +52,7 @@ export function initDeploymentOrders(getScope) {
     const summary=node('div',undefined,'order-summary');
     summary.append(node('h3',active.scope.alias+' · 第 '+active.revision+' 版'),
       node('p','目标 '+active.target+' · context '+(active.context||'待集群建立后登记')+' · '+active.scope.ns),
-      node('p',active.notice,'muted'));
+      node('p',active.notice,'order-notice'));
     const select=node('select');select.id='order-step';select.setAttribute('aria-label','选择操作单步骤');
     for(const step of active.steps){const option=node('option',(step.record.status==='stale'?'模板变化，待重验 · ':step.record.status==='recorded'?'已人工核对 · ':step.record.status==='not-applicable'?'范围外 · ':step.record.status==='blocked'?'卡住 · ':'待核对 · ')+step.title);option.value=step.id;select.append(option);}
     select.value=selected;select.onchange=()=>{selected=select.value;cardIndex=0;render();};
@@ -108,19 +107,18 @@ export function initDeploymentOrders(getScope) {
     const nav=node('div',undefined,'order-nav');
     const prev=node('button','上一项');prev.type='button';prev.disabled=position===0&&cardIndex===0;prev.onclick=()=>goCard(-1);
     const next=node('button','下一项');next.type='button';next.onclick=()=>goCard(1);
-    const done=node('button',executedCards.has(cardKey(step,card))?'已执行 · 下一项':'我已执行','primary');done.type='button';
-    done.onclick=()=>{executedCards.add(cardKey(step,card));goCard(1);};
-    nav.append(prev,node('span','第 '+(cardIndex+1)+' / '+list.length+' 项'),next,done);
+    nav.append(prev,node('span','第 '+(cardIndex+1)+' / '+list.length+' 项'),next);
     container.append(nav,renderCard(step,card));
   }
   function renderCard(step,card){
     const section=node('details',undefined,'order-card');section.open=true;const title=node('summary',card.title);section.append(title);
     section.append(node('p','在哪里做 · '+card.target));
-    const output=node('pre',card.kind==='terminal'?card.text:(card.actions||[]).join('\n'));section.append(output);
+    const command=node('div',undefined,'order-cmd-wrap');
+    const output=node('pre',card.kind==='terminal'?card.text:(card.actions||[]).join('\n'),'order-cmd');command.append(output);section.append(command);
     const store=paramStore.get(cardKey(step,card))||{};
     for(const key of card.missing){const label=node('label',parameters[key]?.label||key);const input=node('input');input.maxLength=256;input.autocomplete='off';input.value=store[key]||'';input.oninput=()=>{store[key]=input.value.trim();paramStore.set(cardKey(step,card),store);};label.append(input);section.append(label);}
     if(card.kind==='terminal'){
-      const copy=node('button','核验并复制检查命令');copy.type='button';
+      const copy=node('button','复制','order-copy');copy.type='button';copy.title='核验并复制检查命令';
       copy.disabled=Boolean(card.change)||!active.confirmed||card.blockedReason.includes('复用');
       copy.onclick=async()=>{
         copy.disabled=true;
@@ -132,10 +130,10 @@ export function initDeploymentOrders(getScope) {
           catch{announce('浏览器未允许自动复制，请从命令框手动复制。');}
         }catch(error){announce(error.message);}finally{copy.disabled=false;}
       };
-      section.append(copy);
+      command.append(copy);
     }
     if(card.blockedReason)section.append(node('p',card.blockedReason,'order-warning'));
-    section.append(node('h4','什么反馈算正常'),node('p',card.normal),node('pre',card.sample));
+    section.append(node('h4','什么反馈算正常'),node('p',card.normal),node('span','正常输出长这样','order-expect-label'),node('pre',card.sample,'order-expect'));
     for(const error of card.errors||[]){const detail=node('details');detail.append(node('summary',error.signal),node('p','先查 · '+error.check),node('p','处理 · '+error.fix),node('p','复验 · '+error.verify));section.append(detail);}
     return section;
   }
@@ -147,7 +145,7 @@ export function initDeploymentOrders(getScope) {
     busy=true;const button=form.querySelector('button[type=submit]');button.disabled=true;
     try{setActive(await api('/generate',{scope,target:form.elements.target.value.trim(),context:form.elements.context.value.trim(),
       confirmed:form.elements.confirmed.checked,allowAssistant:form.elements.allowAssistant.checked,...(active?{id:active.id,revision:active.revision}:{})}));
-      find('order-setup').open=false;await list();announce('操作单已生成。展开教学卡，按正常反馈和报错分支逐步核对。');
+      find('order-setup').open=false;await list();announce('操作单已生成。');
     }catch(error){announce(error.message);}finally{busy=false;button.disabled=false;}
   };
   find('order-new').onclick=()=>{sequence++;active=null;publish();find('order-create').reset();find('order-content').replaceChildren();announce('已切换为新建操作单，原项目仍保留。');};
