@@ -92,3 +92,26 @@ export function writeRecord(plan, steps, step, record) {
   }
   return {plan:readPlan(next,steps),resetCount};
 }
+
+export const projectStorageKey = 'selectedProjectId';
+
+/** 记住当前项目，供全站外壳读取。localStorage 不可写时静默放弃（顶栏会退回「选择项目」）。 */
+export function rememberProject(project) {
+  try {
+    localStorage.setItem(projectStorageKey, JSON.stringify({ id: project.id, name: project.name, lock: project.lock }));
+  } catch {
+    // 隐私模式或 file:// 下 localStorage 不可写：顶栏保持「选择项目」，不影响页面其余功能
+  }
+}
+
+/** 读取当前项目；结构不对或没存过时返回 null。 */
+export function readProject() {
+  try {
+    const raw = localStorage.getItem(projectStorageKey);
+    if (!raw) return null;
+    const value = JSON.parse(raw);
+    return value && typeof value.id === 'string' ? value : null;
+  } catch {
+    return null;
+  }
+}

@@ -32,7 +32,7 @@ export function renderShell({ active = '', title = '', subtitle = '', actions = 
   return `<div class="xt-shell xt-global" data-active="${esc(active)}">`
     + '<header class="xt-topbar">'
     + `<a class="xt-brand" href="/">星图 · 部署副驾驶 <small>${SHELL_VERSION}</small></a>`
-    + '<a class="xt-project" href="/deployment" title="在部署页选择当前项目">项目：未选择 ▾</a>'
+    + '<a class="xt-project" href="/deployment" data-project-chip title="选择或切换当前项目">选择项目 →</a>'
     + '<div class="xt-topbar-right">'
     + '<strong class="xt-source-note"><!--XT-SOURCE-MODE--></strong>'
     + '<button class="ghost" type="button" title="帮助入口暂未接入">帮助</button>'

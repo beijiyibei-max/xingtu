@@ -209,3 +209,7 @@ body.xt-shell {
 /* 服务端注入的数据源标识，必须在页面里留占位符 */
 .xt-source-note { color: var(--fg-2); font-size: var(--fs-4); font-weight: 500; letter-spacing: .02em; }
 :root { scroll-padding-top: 72px; }
+
+/* 空态：一句说明 + 一个下一步动作 */
+.xt-empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); padding: var(--s-4); border: 1px dashed var(--line); border-radius: var(--r-2); }
+.xt-empty-text { margin: 0; max-width: 72ch; color: var(--fg-2); font-size: var(--fs-3); }

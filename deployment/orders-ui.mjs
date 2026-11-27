@@ -1,4 +1,6 @@
 import {parameters} from './command-params.mjs';
+import {request} from '../web/api.mjs';
+import {readProject,rememberProject} from './state.mjs';
 
 export function initDeploymentOrders(getScope) {
   const root=document.createElement('section');
@@ -12,7 +14,7 @@ export function initDeploymentOrders(getScope) {
     '<label class="check"><input name="allowAssistant" type="checkbox"><span>本项目允许使用问星图外部助手（每次提问还需单独确认）</span></label>'+
     '<label class="check"><input name="storeConsent" type="checkbox" required><span>允许当前星图服务器保存此项目的设置和核对记录</span></label>'+
     '<button class="primary" type="submit">生成我的操作单</button> <button id="order-new" type="button">另建项目</button></form></details>'+
-    '<div class="order-controls"><label>打开已有操作单<select id="order-list"><option value="">选择项目</option></select></label><button id="order-refresh" type="button" class="quiet small">刷新项目</button></div>'+
+    '<div class="order-controls"><label>切换版本<select id="order-list"><option value="">选择项目</option></select></label><button id="order-refresh" type="button" class="quiet small">刷新项目</button></div>'+
     '<p id="order-message" role="status"></p><div id="order-content"></div>';
   document.querySelector('#walk-screen').after(root);
   const find=id=>root.querySelector('#'+id);
@@ -25,17 +27,27 @@ export function initDeploymentOrders(getScope) {
   const announce=text=>{find('order-message').textContent=text;};
   const publish=()=>document.dispatchEvent(new CustomEvent('deployment-plan-selected',{detail:active?{id:active.id,allowAssistant:active.allowAssistant}:null}));
   async function api(action,body){
-    const response=await fetch('/api/deployment/plans'+action,{method:body?'POST':'GET',
-      headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,
-      signal:AbortSignal.timeout(15000)});
-    const result=await response.json();
-    if(!response.ok)throw Error(result.error?.message||'操作单服务未就绪');
-    return result;
+    return request('/api/deployment/plans'+action,body?{method:'POST',body}:{});
+  }
+  function syncProjectChip(){
+    const chip=document.querySelector('[data-project-chip]');
+    if(!chip)return;
+    const project=readProject();
+    if(!project){chip.textContent='选择项目 →';chip.title='选择或切换当前项目';return;}
+    chip.textContent=project.name+' · '+project.lock;
+    chip.title='当前项目：'+project.name+'，点击切换版本';
+  }
+  function emptyState(text,actionLabel,onAction){
+    const box=node('div',undefined,'xt-empty');
+    box.append(node('p',text,'xt-empty-text'));
+    if(actionLabel){const button=node('button',actionLabel,'ghost small');button.type='button';button.onclick=onAction;box.append(button);}
+    return box;
   }
   async function list(){
     const result=await api('');const select=find('order-list');select.replaceChildren(node('option','选择项目'));
     for(const item of result.plans){const option=node('option',item.alias+' · 第 '+item.revision+' 版');option.value=item.id;select.append(option);}
     if(active)select.value=active.id;
+    return result.plans;
   }
   function setActive(value){
     sequence++;active=value;publish();
@@ -44,6 +56,8 @@ export function initDeploymentOrders(getScope) {
     form.elements.storeConsent.checked=false;
     selected=value.nextStepId||value.steps[0].id;cardIndex=0;
     try{sessionStorage.setItem('xingtu-active-order',value.id);}catch{}
+    rememberProject({id:value.id,name:value.scope.alias,lock:'第 '+value.revision+' 版'});
+    syncProjectChip();
     render();
   }
   function render(){
@@ -100,7 +114,7 @@ export function initDeploymentOrders(getScope) {
   }
   function paintCards(step,list,container){
     container.replaceChildren();
-    if(!list.length){container.append(node('p','这一步没有需要执行的卡片。','muted'));return;}
+    if(!list.length){container.append(emptyState('这一步没有需要执行的卡片。'));return;}
     cardIndex=Math.max(0,Math.min(cardIndex,list.length-1));
     const card=list[cardIndex];
     const position=active.steps.findIndex(item=>item.id===step.id);
@@ -152,5 +166,11 @@ export function initDeploymentOrders(getScope) {
   find('order-list').onchange=async event=>{if(!event.target.value||busy)return;try{setActive(await api('/open',{id:event.target.value}));announce('已恢复服务器保存的操作单。');}catch(error){announce(error.message);}};
   find('order-refresh').onclick=async()=>{try{await list();if(active)setActive(await api('/open',{id:active.id}));announce('已刷新。');}catch(error){announce(error.message);}};
   if(offline){find('order-setup').hidden=true;find('order-refresh').disabled=true;announce('服务器操作单需登录星图后使用；当前离线教学和本机进度仍可使用。');return;}
-  list().then(async()=>{let saved;try{saved=sessionStorage.getItem('xingtu-active-order');}catch{}if(saved)setActive(await api('/open',{id:saved}));else find('order-setup').open=true;}).catch(error=>announce(error.message));
+  syncProjectChip();
+  list().then(async plans=>{
+    let saved;try{saved=sessionStorage.getItem('xingtu-active-order');}catch{}
+    if(saved){setActive(await api('/open',{id:saved}));return;}
+    if(!plans.length){find('order-content').append(emptyState('还没有操作单。先生成一份，再按步骤逐项核对。','生成我的操作单',()=>{find('order-setup').open=true;}));return;}
+    find('order-setup').open=true;
+  }).catch(error=>announce(error.message));
 }
