@@ -18,6 +18,10 @@ export function initDeploymentOrders(getScope) {
   const find=id=>root.querySelector('#'+id);
   const node=(tag,text,className)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(className)el.className=className;return el;};
   let active=null,selected='',sequence=0,busy=false;
+  let cardIndex=0;
+  const cardCache=new Map();      // revision::stepId -> Promise<cards>，避免来回翻页重复请求
+  const paramStore=new Map();     // stepId::cardIndex -> 已填参数，翻页和切步骤都不丢
+  const executedCards=new Set();  // 本会话内标记「我已执行」的卡片
   const offline=location.protocol==='file:';
   const announce=text=>{find('order-message').textContent=text;};
   const publish=()=>document.dispatchEvent(new CustomEvent('deployment-plan-selected',{detail:active?{id:active.id,allowAssistant:active.allowAssistant}:null}));
@@ -39,7 +43,7 @@ export function initDeploymentOrders(getScope) {
     const form=find('order-create');for(const key of ['target','context'])form.elements[key].value=value[key];
     for(const key of ['confirmed','allowAssistant'])form.elements[key].checked=value[key];
     form.elements.storeConsent.checked=false;
-    selected=value.nextStepId||value.steps[0].id;
+    selected=value.nextStepId||value.steps[0].id;cardIndex=0;
     try{sessionStorage.setItem('xingtu-active-order',value.id);}catch{}
     render();
   }
@@ -52,17 +56,15 @@ export function initDeploymentOrders(getScope) {
       node('p',active.notice,'muted'));
     const select=node('select');select.id='order-step';select.setAttribute('aria-label','选择操作单步骤');
     for(const step of active.steps){const option=node('option',(step.record.status==='stale'?'模板变化，待重验 · ':step.record.status==='recorded'?'已人工核对 · ':step.record.status==='not-applicable'?'范围外 · ':step.record.status==='blocked'?'卡住 · ':'待核对 · ')+step.title);option.value=step.id;select.append(option);}
-    select.value=selected;select.onchange=()=>{selected=select.value;render();};
-    const next=node('button','回到下一步');next.type='button';next.onclick=()=>{selected=active.nextStepId||active.steps[0].id;render();};
+    select.value=selected;select.onchange=()=>{selected=select.value;cardIndex=0;render();};
+    const next=node('button','回到下一步');next.type='button';next.onclick=()=>{selected=active.nextStepId||active.steps[0].id;cardIndex=0;render();};
     summary.append(select,next);content.append(summary);
     const step=active.steps.find(s=>s.id===selected);
     document.dispatchEvent(new CustomEvent('deployment-step',{detail:step.id}));
     const cards=node('div',undefined,'order-cards');content.append(cards);
     const thisSequence=++sequence;
-    api('/cards',{id:active.id,revision:active.revision,stepId:step.id}).then(data=>{
-      if(thisSequence!==sequence)return;
-      for(const card of data.cards)cards.append(renderCard(step,card));
-    }).catch(error=>{if(thisSequence===sequence)announce(error.message);});
+    loadCards(step).then(list=>{if(thisSequence!==sequence)return;paintCards(step,list,cards);})
+      .catch(error=>{if(thisSequence===sequence)announce(error.message);});
     const form=node('form');form.id='order-checks';form.append(node('h3','这一步完成后，逐项核对'));
     step.checks.forEach((text,index)=>{const label=node('label',undefined,'check');const input=node('input');input.type='checkbox';input.name='check';input.value=String(index);input.checked=step.record.checks?.includes(index)||false;label.append(input,node('span',text));form.append(label);});
     const label=node('label','证据或现场记录编号（不填原始输出）');const reference=node('input');reference.name='reference';reference.required=true;reference.maxLength=80;reference.value=step.record.reference||'';label.append(reference);form.append(label);
@@ -79,19 +81,51 @@ export function initDeploymentOrders(getScope) {
     if(step.optional){const skip=node('button','按实施单标记为范围外');skip.type='button';skip.onclick=()=>record('not-applicable');form.append(skip);}
     content.append(form,node('p','来源 '+step.sources.map(source=>source.ref||source.file||source.type).join('；'),'muted'));
   }
+  const cardKey=(step,card)=>step.id+'::'+card.index;
+  function loadCards(step){
+    const key=active.revision+'::'+step.id;
+    if(!cardCache.has(key))cardCache.set(key,api('/cards',{id:active.id,revision:active.revision,stepId:step.id}).then(data=>data.cards));
+    return cardCache.get(key);
+  }
+  async function goCard(delta){
+    const position=active.steps.findIndex(item=>item.id===selected);
+    const list=await loadCards(active.steps[position]);
+    const target=cardIndex+delta;
+    if(target>=0&&target<list.length){cardIndex=target;render();return;}
+    const neighbour=active.steps[position+delta];
+    if(!neighbour){announce(delta>0?'已是最后一项。':'已是第一项。');return;}
+    selected=neighbour.id;
+    const nextList=await loadCards(neighbour);
+    cardIndex=delta>0?0:Math.max(0,nextList.length-1);
+    render();
+  }
+  function paintCards(step,list,container){
+    container.replaceChildren();
+    if(!list.length){container.append(node('p','这一步没有需要执行的卡片。','muted'));return;}
+    cardIndex=Math.max(0,Math.min(cardIndex,list.length-1));
+    const card=list[cardIndex];
+    const position=active.steps.findIndex(item=>item.id===step.id);
+    const nav=node('div',undefined,'order-nav');
+    const prev=node('button','上一项');prev.type='button';prev.disabled=position===0&&cardIndex===0;prev.onclick=()=>goCard(-1);
+    const next=node('button','下一项');next.type='button';next.onclick=()=>goCard(1);
+    const done=node('button',executedCards.has(cardKey(step,card))?'已执行 · 下一项':'我已执行','primary');done.type='button';
+    done.onclick=()=>{executedCards.add(cardKey(step,card));goCard(1);};
+    nav.append(prev,node('span','第 '+(cardIndex+1)+' / '+list.length+' 项'),next,done);
+    container.append(nav,renderCard(step,card));
+  }
   function renderCard(step,card){
-    const section=node('details',undefined,'order-card');const title=node('summary',card.title);section.append(title);
+    const section=node('details',undefined,'order-card');section.open=true;const title=node('summary',card.title);section.append(title);
     section.append(node('p','在哪里做 · '+card.target));
     const output=node('pre',card.kind==='terminal'?card.text:(card.actions||[]).join('\n'));section.append(output);
-    const inputs={};
-    for(const key of card.missing){const label=node('label',parameters[key]?.label||key);const input=node('input');input.maxLength=256;input.autocomplete='off';input.oninput=()=>{inputs[key]=input.value.trim();};label.append(input);section.append(label);}
+    const store=paramStore.get(cardKey(step,card))||{};
+    for(const key of card.missing){const label=node('label',parameters[key]?.label||key);const input=node('input');input.maxLength=256;input.autocomplete='off';input.value=store[key]||'';input.oninput=()=>{store[key]=input.value.trim();paramStore.set(cardKey(step,card),store);};label.append(input);section.append(label);}
     if(card.kind==='terminal'){
       const copy=node('button','核验并复制检查命令');copy.type='button';
       copy.disabled=Boolean(card.change)||!active.confirmed||card.blockedReason.includes('复用');
       copy.onclick=async()=>{
         copy.disabled=true;
         const requested={id:active.id,revision:active.revision,stepId:step.id};
-        try{const data=await api('/command',{...requested,cardIndex:card.index,inputs});
+        try{const data=await api('/command',{...requested,cardIndex:card.index,inputs:store});
           if(!active||active.id!==requested.id||active.revision!==requested.revision||selected!==requested.stepId)return;
           output.textContent=data.command;
           try{await navigator.clipboard.writeText(data.command);announce('检查命令已复制。执行前核对窗口所在机器与「'+data.target+'」一致。');}

@@ -326,3 +326,6 @@ footer { padding-block: 1.35rem; color: var(--muted); font-size: .86rem; }
  #order-checks {padding:18px;background:#111e32;border-radius:12px}
  #order-checks button {margin:12px 10px 0 0}
  @media(max-width:700px){.order-heading,.order-controls{flex-direction:column}.order-workspace{padding:16px}}
+.order-nav {display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.order-nav span {color:#8aa4c8;font-size:13px}
+.order-nav button:disabled {opacity:.45;cursor:not-allowed}
