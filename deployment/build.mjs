@@ -5,6 +5,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {preparation,componentPhases,acceptance} from './flow.mjs';
 import {tutorialFor} from './component-tutorial.mjs';
 import {commandKeys} from './command-params.mjs';
+import {applyShell} from '../web/shell.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const read = file => readFile(join(root,file),'utf8');
@@ -35,7 +36,8 @@ const output = await build({
   banner:{js:'/*! yaml 2.9.1\n'+yamlLicense+'\n*/'},
 });
 const script = output.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
-const css = await read('style.css');
+const shellCss = [await read('../web/tokens.css'), await read('../web/ui.css')].join('\n');
+const css = (await read('style.css')) + '\n' + shellCss;
 await writeFile(resolve(root,'../build/fixtures/deployment-plan.json'),JSON.stringify(steps));
 await writeFile(resolve(root,'../build/fixtures/deployment-assistant.json'),JSON.stringify(
   Object.fromEntries(steps.map(step=>[step.id,{title:step.title,sources:step.sources,
@@ -43,10 +45,11 @@ await writeFile(resolve(root,'../build/fixtures/deployment-assistant.json'),JSON
       errors:card.errors.map(error=>({signal:error.signal,check:error.check,verify:error.verify}))}))}]))));
 const hash = text => createHash('sha256').update(text.replace(/\r\n?/g,'\n')).digest('base64');
 const csp = `default-src 'none'; script-src 'sha256-${hash(script)}'; style-src 'sha256-${hash(css)}'; base-uri 'none'; form-action 'none'; connect-src 'none'`;
-const html = (await read('template.html'))
+const page = (await read('template.html'))
   .replace('__DEPLOYMENT_CSP__',()=>csp)
   .replace('/*__DEPLOYMENT_CSS__*/',()=>css)
   .replace('/*__DEPLOYMENT_JS__*/',()=>script);
+const html = applyShell(page,{active:'deployment',injectCss:false});
 await Promise.all([
   writeFile(resolve(root,'../build/web/deployment.html'),html.replace("connect-src 'none'","connect-src 'self'")),
   writeFile(resolve(root,'../dist/数栈7.0部署向导.html'),html),

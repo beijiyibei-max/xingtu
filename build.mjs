@@ -2,6 +2,7 @@ import {readFile,writeFile,mkdir,copyFile,rename} from 'node:fs/promises';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
+import {applyShell} from './web/shell.mjs';
 import {InvestigationEngine} from './legacy/connector/observability/investigation-engine.mjs';
 import {DemoObservabilityAdapter} from './legacy/connector/observability/demo-adapter.mjs';
 import {sanitizeSnapshot,snapshotSummary,diffSnapshots} from './legacy/connector/snapshot-store.mjs';
@@ -9,9 +10,11 @@ const root=dirname(fileURLToPath(import.meta.url)),legacy=join(root,'legacy');
 const web=join(root,'build/web'),fixtures=join(root,'build/fixtures'),classes=join(root,'build/classes');
 for(const dir of [web,fixtures,classes,join(root,'dist')])await mkdir(dir,{recursive:true});
 const read=name=>readFile(join(root,name),'utf8');
-const nav=`<nav class="xt-global"><a href="/">✦ 星图 · 全部功能</a><a href="/workbench">项目与验收</a><a href="/criteria">排障与配置质检</a><a href="/operations">运维工作台</a><a href="/universe">三维关系</a><a href="/confidential">保密现场</a><strong class="xt-source-note"><!--XT-SOURCE-MODE--></strong></nav><style>.xt-global{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:2147483000;display:flex;gap:6px;max-width:96vw;overflow-x:auto;padding:8px;border:1px solid #496080;border-radius:15px;background:#0b172df2;box-shadow:0 5px 24px #0008;font:12px/1.4 system-ui}.xt-global a,.xt-global strong{color:#d8e5ff;text-decoration:none;white-space:nowrap;padding:7px 9px;border-radius:8px}.xt-global a:hover{background:#263d62}.xt-global .xt-source-note{color:#ffd094;border-left:1px solid #496080;font-size:11px}</style>`;
-function attachNav(html){const at=html.lastIndexOf('</body>');if(at<0)throw Error('缺少页面结束标签');const navigation=nav.replace('<a href="/workbench">','<a href="/deployment">现场部署向导</a><a href="/workbench">');return html.slice(0,at)+navigation+html.slice(at);}
-async function page(name,file,transform=x=>x){const html=transform(await readFile(file,'utf8'));await writeFile(join(web,name+'.html'),attachNav(html));}
+const shellCss=[await read('web/tokens.css'),await read('web/ui.css')].join('\n');
+async function page(name,file,transform=x=>x){
+  const html=transform(await readFile(file,'utf8'));
+  await writeFile(join(web,name+'.html'),applyShell(html,{active:name,css:shellCss}));
+}
 await page('criteria',join(legacy,'pages/criteria.html'));
 await page('confidential',join(legacy,'pages/confidential.html'));
 await import('./universe/build.mjs');
@@ -29,7 +32,7 @@ project=project.replace('function bindWorkbench(){','function bindWorkbench(){\n
 project=project.replace('<div id="app"></div>','<div id="app"></div><div id="server-dialog"></div>');
 project=project.replace('render();</script>',`${await read('web/vault.js')}\nrender();</script>`);
 if(!project.includes('function renderServerButtons'))throw Error('项目备份接口未注入');
-await writeFile(join(web,'workbench.html'),attachNav(project));
+await writeFile(join(web,'workbench.html'),applyShell(project,{active:'workbench',css:shellCss}));
 for(const name of ['index.html','login.html','portal.js','portal.css'])await copyFile(join(root,'web',name),join(web,name));
 const current=sanitizeSnapshot(JSON.parse(await readFile(join(legacy,'connector/demo-snapshot.json'),'utf8')));
 current.source='EM Database · 内置脱敏演示快照';

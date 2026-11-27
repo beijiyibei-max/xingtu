@@ -1,0 +1,211 @@
+/* 外壳 + 组件三档。依赖 tokens.css 的变量；在页面样式之后注入，靠顺序覆盖旧规则。 */
+
+body.xt-shell {
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font: var(--fs-3)/var(--lh-2) system-ui, "Microsoft YaHei", sans-serif;
+}
+
+/* ---- 顶栏 56px ---- */
+.xt-topbar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 0 var(--s-4);
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+  z-index: 900;
+}
+.xt-brand {
+  text-decoration: none;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-1);
+  color: var(--fg-0);
+  font-size: var(--fs-2);
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+.xt-brand small { color: var(--fg-2); font: var(--fs-4)/1 ui-monospace, Consolas, monospace; }
+.xt-project {
+  margin-left: var(--s-4);
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-1);
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-size: var(--fs-3);
+  text-decoration: none;
+}
+.xt-project:hover { border-color: var(--fg-2); color: var(--fg-0); }
+.xt-topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--s-1); }
+.xt-topbar .xt-ghost { color: var(--fg-2); }
+.xt-topbar .xt-ghost:hover { color: var(--fg-0); }
+
+/* ---- 左栏 200px ---- */
+.xt-rail {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  bottom: 0;
+  width: 200px;
+  padding: var(--s-2) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-1);
+  border-right: 1px solid var(--line);
+  z-index: 800;
+}
+.xt-rail a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-1);
+  padding: 9px var(--s-3);
+  border-left: 3px solid transparent;
+  color: var(--fg-1);
+  font-size: var(--fs-3);
+  text-decoration: none;
+}
+.xt-rail a:hover { background: var(--bg-2); color: var(--fg-0); }
+.xt-rail a[aria-current="page"] {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border-left-color: var(--accent);
+}
+.xt-rail a em { color: var(--fg-2); font-size: var(--fs-4); font-style: normal; }
+
+/* ---- 内容区 max-width 1100 ---- */
+.xt-main { margin-left: 200px; padding-top: 56px; }
+.xt-content { max-width: 1100px; margin: 0 auto; padding: var(--s-4) var(--s-5) var(--s-5); }
+.xt-page-head { margin: 0 0 var(--s-4); }
+.xt-eyebrow {
+  margin: 0;
+  color: var(--fg-2);
+  font: 600 var(--fs-4)/1 ui-monospace, Consolas, monospace;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.xt-page-head h1 { margin: var(--s-1) 0 6px; color: var(--fg-0); font-size: var(--fs-1); line-height: var(--lh-1); }
+.xt-page-head p { margin: 0; color: var(--fg-2); font-size: var(--fs-3); max-width: 72ch; }
+.xt-page-actions { display: flex; gap: var(--s-1); margin-top: var(--s-2); }
+
+/* ---- 按钮三档：一屏只允许一个 primary ---- */
+.xt-shell button,
+.xt-shell .xt-btn {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--fg-0);
+  border-radius: var(--r-1);
+  padding: 7px 14px;
+  font-size: var(--fs-3);
+  cursor: pointer;
+}
+.xt-shell button:hover:not(:disabled),
+.xt-shell .xt-btn:hover { background: var(--bg-2); border-color: var(--fg-2); }
+.xt-shell button:disabled { opacity: .45; cursor: default; }
+.xt-shell button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #05231e;
+  font-weight: 650;
+}
+.xt-shell button.primary:hover:not(:disabled) { background: #5fe6cf; border-color: #5fe6cf; }
+.xt-shell button.ghost { border-color: transparent; background: transparent; color: var(--fg-1); }
+.xt-shell button.ghost:hover:not(:disabled) { background: var(--bg-2); }
+.xt-shell button.danger-ghost { border-color: transparent; background: transparent; color: var(--danger); font-size: var(--fs-3); padding: 5px 8px; }
+
+/* ---- 状态胶囊：颜色，不用描边 ---- */
+.xt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-2);
+  font-size: var(--fs-4);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.xt-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.xt-pill.ok { color: var(--ok); }
+.xt-pill.warn { color: var(--warn); }
+.xt-pill.danger { color: var(--danger); }
+.xt-pill.info { color: var(--info); }
+
+/* ---- 命令 / 正常输出 / 说明：三者视觉互斥 ---- */
+.xt-shell pre.cmd {
+  margin: var(--s-1) 0;
+  padding: 12px 14px;
+  background: #050c17;
+  border: 1px solid var(--line);
+  border-radius: var(--r-1);
+  color: #c9e9e0;
+  font: 12.5px/1.65 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.xt-shell pre.expect {
+  margin: var(--s-1) 0;
+  padding: 10px 14px;
+  background: none;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-1);
+  color: var(--fg-2);
+  font: 12.5px/1.6 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.xt-shell .note { color: var(--fg-2); font-size: var(--fs-3); line-height: var(--lh-2); max-width: 72ch; }
+
+/* ---- 表单控件：不用浏览器默认外观 ---- */
+.xt-shell select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 7px 30px 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-1);
+  background: var(--bg-0) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237f8fa6' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 10px center / 10px;
+  color: var(--fg-0);
+  font-size: var(--fs-3);
+}
+.xt-shell input:not([type="checkbox"]):not([type="radio"]) {
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-1);
+  background: var(--bg-0);
+  color: var(--fg-0);
+  font-size: var(--fs-3);
+}
+.xt-shell input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0 6px 0 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--bg-0);
+  vertical-align: -2px;
+  cursor: pointer;
+}
+.xt-shell input[type="checkbox"]:checked {
+  border-color: var(--accent);
+  background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.4l2.4 2.4L9.6 3.6' fill='none' stroke='%2305231e' stroke-width='2'/%3E%3C/svg%3E") center / 10px no-repeat;
+}
+
+/* ---- 页面内已有的品牌块让位给顶栏，只保留工具条 ---- */
+.xt-shell .mast .brand { display: none; }
+
+/* ---- 分组靠留白，不靠线 ---- */
+.xt-shell section + section { margin-top: var(--s-4); }
+
+/* 三维页吃满视口，外壳只提供顶栏与左栏，不压缩画布 */
+.xt-shell[data-active="universe"] .xt-content { max-width: none; padding: 0; }
+
+/* 服务端注入的数据源标识，必须在页面里留占位符 */
+.xt-source-note { color: var(--fg-2); font-size: var(--fs-4); font-weight: 500; letter-spacing: .02em; }
+:root { scroll-padding-top: 72px; }

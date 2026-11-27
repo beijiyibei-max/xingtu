@@ -1,0 +1,30 @@
+/* 设计 token —— 全局只此一处。数值来自 docs/06-UI外壳与设计token.md 第二节。 */
+:root {
+  --bg-0: #080d16;
+  --bg-1: #0d1523;
+  --bg-2: #121c2d;
+  --line: #1b2740;
+  --line-strong: #2a3a58;
+  --fg-0: #e8f1ff;
+  --fg-1: #b6c6dc;
+  --fg-2: #7f8fa6;
+  --accent: #4ad8c0;
+  --ok: #3ecf8e;
+  --warn: #f2b544;
+  --danger: #ff6b6b;
+  --info: #5aa9ff;
+  --fs-1: 21px;
+  --fs-2: 15px;
+  --fs-3: 13px;
+  --fs-4: 11px;
+  --lh-1: 1.35;
+  --lh-2: 1.55;
+  --s-1: 8px;
+  --s-2: 12px;
+  --s-3: 16px;
+  --s-4: 24px;
+  --s-5: 32px;
+  --r-1: 6px;
+  --r-2: 10px;
+  --shadow-float: 0 12px 32px #0009;
+}
