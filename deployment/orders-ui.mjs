@@ -12,7 +12,7 @@ export function initDeploymentOrders(getScope) {
     '<label class="check"><input name="allowAssistant" type="checkbox"><span>本项目允许使用问星图外部助手（每次提问还需单独确认）</span></label>'+
     '<label class="check"><input name="storeConsent" type="checkbox" required><span>允许当前星图服务器保存此项目的设置和核对记录</span></label>'+
     '<button class="primary" type="submit">生成我的操作单</button> <button id="order-new" type="button">另建项目</button></form></details>'+
-    '<div class="order-controls"><label>打开已有操作单<select id="order-list"><option value="">选择项目</option></select></label><button id="order-refresh" type="button">刷新项目</button></div>'+
+    '<div class="order-controls"><label>打开已有操作单<select id="order-list"><option value="">选择项目</option></select></label><button id="order-refresh" type="button" class="quiet small">刷新项目</button></div>'+
     '<p id="order-message" role="status"></p><div id="order-content"></div>';
   document.querySelector('#walk-screen').after(root);
   const find=id=>root.querySelector('#'+id);
@@ -57,7 +57,7 @@ export function initDeploymentOrders(getScope) {
     const select=node('select');select.id='order-step';select.setAttribute('aria-label','选择操作单步骤');
     for(const step of active.steps){const option=node('option',(step.record.status==='stale'?'模板变化，待重验 · ':step.record.status==='recorded'?'已人工核对 · ':step.record.status==='not-applicable'?'范围外 · ':step.record.status==='blocked'?'卡住 · ':'待核对 · ')+step.title);option.value=step.id;select.append(option);}
     select.value=selected;select.onchange=()=>{selected=select.value;cardIndex=0;render();};
-    const next=node('button','回到下一步');next.type='button';next.onclick=()=>{selected=active.nextStepId||active.steps[0].id;cardIndex=0;render();};
+    const next=node('button','回到下一步');next.type='button';next.className='quiet small';next.onclick=()=>{selected=active.nextStepId||active.steps[0].id;cardIndex=0;render();};
     summary.append(select,next);content.append(summary);
     const step=active.steps.find(s=>s.id===selected);
     document.dispatchEvent(new CustomEvent('deployment-step',{detail:step.id}));

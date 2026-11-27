@@ -309,23 +309,43 @@ footer { padding-block: 1.35rem; color: var(--muted); font-size: .86rem; }
  .assistant-answer { white-space:pre-wrap; line-height:1.8; margin-top:16px; overflow-wrap:anywhere; }
  #ask-form textarea { display:block; width:100%; box-sizing:border-box; margin:10px 0; padding:12px; color:inherit; background:#09172a; border:1px solid #385576; border-radius:10px; font:inherit; }
  #contract-form label { display:block; margin:12px 0; }
- .order-workspace { margin:20px 0;padding:26px;background:linear-gradient(135deg,#0d1e36,#10182b);border:1px solid #295377;border-radius:20px; }
- .order-heading {display:flex;align-items:start;justify-content:space-between;gap:18px}
- .order-heading h2 {margin:5px 0 10px;color:#dcf2ff}
- .order-badge {padding:8px 12px;border-radius:99px;border:1px solid #368a9e;color:#86e1d9;font-size:12px;white-space:nowrap}
- .order-controls {display:flex;align-items:end;gap:12px;margin:16px 0}
- .order-controls label {flex:1}
- .order-summary {padding:16px;background:#0a1325;border-radius:12px;margin:12px 0}
- .order-summary select {width:min(100%,580px);margin-right:12px}
- .order-card {border:1px solid #29415e;border-radius:12px;padding:14px 18px;margin:12px 0}
- .order-card summary {font-weight:650;cursor:pointer}
- .order-card pre {white-space:pre-wrap;overflow-wrap:anywhere;background:#070e1d;padding:14px;border-radius:8px;color:#c3ebdf}
- .order-workspace label {display:block;margin:10px 0}
- .order-workspace .check {display:flex}
- .order-warning {color:#ffd48c}
- #order-checks {padding:18px;background:#111e32;border-radius:12px}
- #order-checks button {margin:12px 10px 0 0}
- @media(max-width:700px){.order-heading,.order-controls{flex-direction:column}.order-workspace{padding:16px}}
-.order-nav {display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
-.order-nav span {color:#8aa4c8;font-size:13px}
-.order-nav button:disabled {opacity:.45;cursor:not-allowed}
+ .order-workspace {margin:24px 0;padding:28px 30px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+ .order-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+ .order-heading .eyebrow {margin:0;font:600 11px/1 var(--mono);letter-spacing:.14em;color:#7f9bbd}
+ .order-heading h2 {margin:8px 0 6px;color:#e6f4ff;font-size:21px}
+ .order-heading p {margin:0;color:var(--muted);font-size:13.5px}
+ .order-badge {padding:5px 11px;border-radius:999px;border:1px solid #2f6d78;color:#8fd8d0;background:#0b2028;font-size:11.5px;white-space:nowrap}
+ #order-setup {display:inline-block;vertical-align:middle;margin:0 16px 0 0}
+ #order-setup[open] {display:block;margin-bottom:14px}
+ #order-setup summary {cursor:pointer;font-size:13px;color:#9fc4e8}
+ #order-message {margin:10px 0 0;font-size:12.5px;color:#8fa9c9}
+ .order-controls {display:inline-flex;align-items:center;gap:8px;vertical-align:middle;margin:10px 0 0}
+ .order-controls label {display:flex;align-items:center;gap:8px;flex:0 0 auto;margin:0;font-size:13px;color:var(--muted)}
+ .order-controls select {width:240px;max-width:240px;flex:0 0 auto}
+ .order-controls button {flex:0 0 auto;font-size:12.5px;padding:6px 12px}
+ .order-summary {padding:0 0 14px;margin:20px 0 0;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0}
+ .order-summary h3 {margin:0;font-size:17px;color:#e2f0ff}
+ .order-summary p {margin:4px 0 0;font-size:13px;color:var(--muted)}
+ .order-summary select {width:min(100%,380px);margin:14px 10px 0 0;vertical-align:middle}
+ .order-nav {display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 0 10px}
+ .order-nav button {font-size:13px;padding:6px 12px}
+ .order-nav button.primary {margin-left:auto}
+ .order-nav span {font:500 12.5px/1 var(--mono);color:#8fa9c9;padding:5px 9px;border:1px solid #22354f;border-radius:999px;font-variant-numeric:tabular-nums}
+ .order-card {padding:4px 18px 16px;margin:12px 0;background:#0b1424;border:1px solid #1f3149;border-radius:10px}
+ .order-card summary {padding:12px 0 6px;font-weight:680;font-size:15px;color:#e8f3ff;cursor:pointer}
+ .order-card>p {margin:0 0 10px;font-size:13px;color:var(--muted)}
+ .order-card pre {margin:10px 0;padding:12px 14px;background:#050c17;border:1px solid #16233a;border-radius:8px;color:#c9e9e0;font:12.5px/1.65 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+ .order-card h4 {margin:16px 0 4px;font:600 11px/1 var(--mono);letter-spacing:.12em;color:#7f9bbd;text-transform:uppercase}
+ .order-card details {margin:8px 0 0}
+ .order-card details summary {padding:6px 0;font-size:13px;font-weight:500;color:#b9cfe6}
+ .order-card button {font-size:12.5px;padding:6px 12px}
+ .order-workspace label {display:block;margin:10px 0;font-size:13px;color:var(--muted)}
+ .order-workspace .check {display:flex;align-items:flex-start;gap:8px}
+ .order-workspace input:not([type=checkbox]) {margin-top:6px}
+ .order-warning {color:var(--warning);font-size:13px}
+ #order-checks {margin:22px 0 0;padding:18px 0 0;background:none;border:0;border-top:1px solid var(--line);border-radius:0}
+ #order-checks h3 {margin:0 0 10px;font-size:15px}
+ #order-checks .check {margin:7px 0;color:#c6d8ec}
+ #order-checks [name=reference] {display:block;width:100%;max-width:360px;margin-top:6px}
+ #order-checks button {margin:14px 10px 0 0;font-size:13px;padding:7px 14px}
+ @media(max-width:700px){.order-heading{flex-direction:column}.order-workspace{padding:18px}.order-controls{flex-wrap:wrap}.order-nav button.primary{margin-left:0}}
